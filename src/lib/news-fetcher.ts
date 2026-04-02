@@ -496,9 +496,19 @@ export async function fetchFromNewsAPI(): Promise<RawNewsItem[]> {
   }
 }
 
+// ---- SERVER-SIDE CACHE ----
+// Aynı revalidate döngüsünde çoklu çağrıyı önler
+let newsCache: { data: NewsArticle[]; timestamp: number } | null = null;
+const NEWS_CACHE_TTL = 1000 * 60 * 2; // 2 dakika
+
 // ---- TÜM KAYNAKLARI BİRLEŞTİR ----
 
 export async function fetchAllNews(): Promise<NewsArticle[]> {
+  // Cache kontrolü
+  if (newsCache && Date.now() - newsCache.timestamp < NEWS_CACHE_TTL) {
+    return newsCache.data;
+  }
+
   try {
     const [rssResult, newsApiResult] = await Promise.allSettled([
       fetchRSSFeeds(),
@@ -512,7 +522,9 @@ export async function fetchAllNews(): Promise<NewsArticle[]> {
 
     if (allRaw.length === 0) {
       console.warn("Hiçbir kaynak haber döndürmedi, demo veriler gösteriliyor");
-      return getDemoNews();
+      const demoData = getDemoNews();
+      newsCache = { data: demoData, timestamp: Date.now() };
+      return demoData;
     }
 
     allRaw.sort(
@@ -528,7 +540,7 @@ export async function fetchAllNews(): Promise<NewsArticle[]> {
       return true;
     });
 
-    return unique.map((item) => {
+    const result = unique.map((item) => {
       const slug = generateSlug(item.title);
       return {
         ...item,
@@ -547,9 +559,15 @@ export async function fetchAllNews(): Promise<NewsArticle[]> {
         },
       } as NewsArticle;
     });
+
+    // Cache'e kaydet
+    newsCache = { data: result, timestamp: Date.now() };
+    return result;
   } catch (error) {
     console.error("fetchAllNews hatasi:", error);
-    return getDemoNews();
+    const demoData = getDemoNews();
+    newsCache = { data: demoData, timestamp: Date.now() };
+    return demoData;
   }
 }
 

@@ -100,17 +100,17 @@ export default function AISummary({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span className="text-2xl animate-pulse">🤖</span>
-            <h3 className="text-base font-bold text-amber-400">
+            <h3 className="text-base font-bold text-amber-600">
               Yapay Zeka Şu An Çok Yoğun
             </h3>
           </div>
-          <span className="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-medium">
+          <span className="text-xs bg-amber-500/20 text-amber-600 px-2.5 py-1 rounded-full font-medium">
             ⏳ Beklemede
           </span>
         </div>
 
         <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-4 mb-4">
-          <p className="text-sm text-amber-200/80 leading-relaxed">
+          <p className="text-sm text-amber-700 leading-relaxed">
             {summary.statusMessage ||
               "Yapay zeka sunucusu şu anda yoğun talep nedeniyle geçici olarak meşgul. Bu durum genellikle birkaç dakika içinde düzelir."}
           </p>
@@ -119,11 +119,11 @@ export default function AISummary({
         <div className="flex items-center gap-3">
           <button
             onClick={handleRetry}
-            className="inline-flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-4 py-2 rounded-lg transition-all text-sm font-medium"
+            className="inline-flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 border border-amber-500/30 px-4 py-2 rounded-lg transition-all text-sm font-medium"
           >
             🔄 Tekrar Dene {retryCount > 0 && `(${retryCount})`}
           </button>
-          <span className="text-xs text-amber-400/50">
+          <span className="text-xs text-amber-600/70">
             Yapay zeka analizi hazır olduğunda otomatik görünecektir
           </span>
         </div>
@@ -137,16 +137,16 @@ export default function AISummary({
       <div className="bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/20 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xl">⚠️</span>
-          <h3 className="text-base font-bold text-red-400">
+          <h3 className="text-base font-bold text-red-600">
             AI Analiz Yüklenemedi
           </h3>
         </div>
-        <p className="text-sm text-red-300/70 mb-3">
+        <p className="text-sm text-red-500 mb-3">
           {error || "Bilinmeyen bir hata oluştu."}
         </p>
         <button
           onClick={handleRetry}
-          className="inline-flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-4 py-2 rounded-lg transition-all text-sm font-medium"
+          className="inline-flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-600 border border-red-500/30 px-4 py-2 rounded-lg transition-all text-sm font-medium"
         >
           🔄 Tekrar Dene
         </button>

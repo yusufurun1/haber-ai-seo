@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { NewsArticle } from "@/lib/types";
 import { formatDateTurkish } from "@/lib/seo-utils";
+import { sanitizeHTML } from "@/lib/sanitize";
 import AISummary from "./AISummary";
 
 interface NewsDetailProps {
@@ -152,7 +153,7 @@ export default function NewsDetail({ article }: NewsDetailProps) {
             </h2>
             <div
               className="text-slate-300 leading-relaxed article-html-content space-y-6"
-              dangerouslySetInnerHTML={{ __html: expandedContent }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHTML(expandedContent) }}
             />
           </div>
         </div>
@@ -202,7 +203,7 @@ export default function NewsDetail({ article }: NewsDetailProps) {
           {hasContent ? (
             <div
               className="text-ui-dark leading-relaxed article-html-content font-medium opacity-90"
-              dangerouslySetInnerHTML={{ __html: article.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHTML(article.content) }}
             />
           ) : (
             <div className="text-center py-12">

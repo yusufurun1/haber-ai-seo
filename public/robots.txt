@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://your-domain.com/sitemap.xml
+Sitemap: https://haberai.com/sitemap.xml

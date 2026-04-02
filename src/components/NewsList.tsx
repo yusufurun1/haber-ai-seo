@@ -15,10 +15,10 @@ export default function NewsList({ articles }: NewsListProps) {
     return (
       <div className="text-center py-16">
         <div className="text-6xl mb-4">📭</div>
-        <h2 className="text-xl font-bold text-white mb-2">
+        <h2 className="text-xl font-bold text-ui-dark mb-2">
           Henüz haber bulunamadı
         </h2>
-        <p className="text-forex-muted">
+        <p className="text-text-muted">
           Forex haberleri yükleniyor veya kaynak bağlantısı kontrol ediliyor...
         </p>
       </div>

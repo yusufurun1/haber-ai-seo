@@ -8,19 +8,19 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        forex: {
-          green: "#00C853",
-          red: "#FF1744",
-          gold: "#FFD700",
-          dark: "#0A0E17",
-          card: "#111827",
-          border: "#1F2937",
-          text: "#E5E7EB",
-          muted: "#9CA3AF",
+        primary: {
+          DEFAULT: "#1fd176",
+          hover: "#19b363",
         },
+        "ui-dark": "#1e2433",
+        "bg-main": "#ffffff",
+        "bg-alt": "#f8fbfc",
+        "text-main": "#1e2433",
+        "text-muted": "#64748b",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        heading: ["Lato", "sans-serif"],
       },
     },
   },

@@ -4,7 +4,7 @@
 // ==========================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { fetchAllNews, fetchFromNewsAPI } from "@/lib/news-fetcher";
+import { fetchAllNews } from "@/lib/news-fetcher";
 import { NewsApiResponse } from "@/lib/types";
 
 export const revalidate = 300; // 5 dakikada bir revalidate

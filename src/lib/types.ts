@@ -5,10 +5,10 @@
 /** Haber kaynağı tipi */
 export type NewsSource =
   | "newsapi"
-  | "forexfactory"
+  | "cointelegraph"
+  | "forexlive"
   | "investing"
-  | "dailyfx"
-  | "reuters";
+  | "demo";
 
 /** Ham haber verisi (kaynaklardan çekilen) */
 export interface RawNewsItem {

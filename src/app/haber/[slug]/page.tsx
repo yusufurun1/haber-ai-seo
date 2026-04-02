@@ -18,13 +18,14 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 // ISR: 5 dakikada bir revalidate
 export const revalidate = 300;
 
-// Statik parametreleri önceden oluştur (SSG)
+// Statik parametreleri önceden oluşturma — tamamen ISR'a bırak
+// Build sırasında RSS + scraping çağrısını önler
 export async function generateStaticParams() {
-  const articles = await fetchAllNews();
-  return articles.map((article) => ({
-    slug: article.slug,
-  }));
+  return [];
 }
+
+// Bilinen olmayan slug'lar on-demand ISR ile oluşturulacak
+export const dynamicParams = true;
 
 // Dinamik SEO meta verileri
 export async function generateMetadata({
@@ -90,7 +91,7 @@ export default async function HaberDetayPage({
   const articleSchema = generateArticleSchema(article);
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: "Ana Sayfa", url: SITE_URL },
-    { name: "Forex Haberleri", url: `${SITE_URL}` },
+    { name: "Forex Haberleri", url: `${SITE_URL}/#haberler` },
     { name: article.title, url: `${SITE_URL}/haber/${article.slug}` },
   ]);
 
