@@ -95,17 +95,14 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-forex-dark">
+      <body className="min-h-screen bg-bg-main antialiased selection:bg-primary/30 selection:text-ui-dark">
         {/* 
           Aşama 1: Header/Footer yok
-          Gelecekte buraya <Header /> eklenecek 
+          Design: comofx inspired minimalist start
         */}
-        <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <main className="container mx-auto px-4 py-12 max-w-6xl">
           {children}
         </main>
-        {/* 
-          Gelecekte buraya <Footer /> eklenecek 
-        */}
       </body>
     </html>
   );

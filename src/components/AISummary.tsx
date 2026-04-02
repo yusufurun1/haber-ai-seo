@@ -146,25 +146,28 @@ export default function AISummary({
   // === READY STATE (Gerçek AI veya Demo) ===
   const sentimentConfig = {
     positive: {
-      bg: "from-green-500/10 to-emerald-500/10",
-      border: "border-green-500/20",
+      bg: "bg-primary/5",
+      border: "border-primary/20",
       icon: "📈",
       label: "Pozitif Etki",
-      color: "text-green-400",
+      color: "text-primary",
+      badge: "bg-primary text-ui-dark",
     },
     negative: {
-      bg: "from-red-500/10 to-rose-500/10",
-      border: "border-red-500/20",
+      bg: "bg-red-50",
+      border: "border-red-100",
       icon: "📉",
       label: "Negatif Etki",
-      color: "text-red-400",
+      color: "text-red-600",
+      badge: "bg-red-600 text-white",
     },
     neutral: {
-      bg: "from-blue-500/10 to-purple-500/10",
-      border: "border-blue-500/20",
+      bg: "bg-slate-50",
+      border: "border-slate-100",
       icon: "➡️",
       label: "Nötr Etki",
-      color: "text-blue-400",
+      color: "text-slate-600",
+      badge: "bg-ui-dark text-white",
     },
   };
 
@@ -172,61 +175,73 @@ export default function AISummary({
 
   return (
     <div
-      className={`bg-gradient-to-r ${config.bg} border ${config.border} rounded-xl p-6 space-y-4`}
+      className={`${config.bg} border ${config.border} rounded-[24px] p-8 shadow-sm transition-all duration-500`}
     >
       {/* Başlık + AI Badge */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🤖</span>
-          <h3 className="text-base font-bold text-white">AI Analiz</h3>
-          {summary.isAIGenerated ? (
-            <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-medium">
-              ✅ Gemini AI
-            </span>
-          ) : (
-            <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">
-              ⚡ Hızlı Mod
-            </span>
-          )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-ui-dark flex items-center justify-center text-white shadow-lg">
+            <span className="text-xl">🤖</span>
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-ui-dark uppercase tracking-tight leading-none mb-1">AI Analiz</h3>
+            <div className="flex items-center gap-2">
+              {summary.isAIGenerated ? (
+                <span className="text-[9px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-primary animate-pulse"></span> Gemini AI Güdümlü
+                </span>
+              ) : (
+                <span className="text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"></span> Hızlı Mod
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <span
-          className={`text-sm font-medium ${config.color} flex items-center gap-1`}
-        >
+        <div className={`px-4 py-2 rounded-full font-black text-[11px] uppercase tracking-[0.2em] shadow-sm flex items-center gap-2 ${config.badge}`}>
           {config.icon} {config.label}
-        </span>
+        </div>
       </div>
 
-      {/* Özet */}
-      <div>
-        <h4 className="text-xs font-semibold text-forex-muted uppercase tracking-wider mb-2">
-          📝 Kısa Özet
-        </h4>
-        <p className="text-sm text-forex-text leading-relaxed">
-          {summary.summary}
-        </p>
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* Özet */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-[2px] bg-primary"></div>
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+              Özet Rapor
+            </h4>
+          </div>
+          <p className="text-ui-dark/90 leading-relaxed font-medium">
+            {summary.summary}
+          </p>
+        </div>
 
-      {/* Analiz */}
-      <div>
-        <h4 className="text-xs font-semibold text-forex-muted uppercase tracking-wider mb-2">
-          🔍 Piyasa Analizi
-        </h4>
-        <p className="text-sm text-forex-text leading-relaxed">
-          {summary.analysis}
-        </p>
+        {/* Analiz */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-[2px] bg-primary"></div>
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+              Piyasa Etkisi
+            </h4>
+          </div>
+          <p className="text-ui-dark/90 leading-relaxed font-medium">
+            {summary.analysis}
+          </p>
+        </div>
       </div>
 
       {/* Etkilenen Pariteler */}
       {summary.affectedPairs.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-forex-muted uppercase tracking-wider mb-2">
-            💱 Etkilenen Pariteler
+        <div className="mt-10 pt-8 border-t border-slate-100">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+            Takip Edilecek Pariteler
           </h4>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-3 flex-wrap">
             {summary.affectedPairs.map((pair: string) => (
               <span
                 key={pair}
-                className="text-xs font-mono bg-forex-dark/60 border border-forex-border px-3 py-1.5 rounded-lg text-forex-gold"
+                className="text-xs font-black bg-white border border-slate-200 px-4 py-2 rounded-xl text-ui-dark shadow-sm hover:border-primary transition-colors cursor-default"
               >
                 {pair}
               </span>
@@ -236,18 +251,17 @@ export default function AISummary({
       )}
 
       {/* Not + Yeniden dene */}
-      <div className="flex items-center justify-between pt-2 border-t border-forex-border/50">
-        <p className="text-[10px] text-forex-muted/60">
-          ⚠️ Bu analiz yapay zeka tarafından üretilmiştir. Yatırım tavsiyesi
-          niteliği taşımaz.
+      <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100/50">
+        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center sm:text-left leading-relaxed">
+          ⚠️ Yapay zeka verileri bilgilendirme amaçlıdır. <br className="hidden sm:block" />
+          Finansal tavsiye olarak değerlendirilemez.
         </p>
         {!summary.isAIGenerated && (
           <button
             onClick={handleRetry}
-            className="text-[10px] text-amber-400/70 hover:text-amber-300 transition-colors"
-            title="Gemini AI ile yeniden analiz üret"
+            className="group flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] hover:text-amber-600 transition-all bg-amber-50 px-4 py-2 rounded-full"
           >
-            🔄 AI ile güncelle
+            <span className="transition-transform group-hover:rotate-180 duration-500">🔄</span> AI GÜNCELLE
           </button>
         )}
       </div>

@@ -16,56 +16,73 @@ export default async function HomePage() {
 
   return (
     <div className="animate-fadeIn">
-      {/* Sayfa Başlığı */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-3xl">📊</span>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">
-            Forex Haberleri
+      {/* Sayfa Başlığı (Hero) - comofx Style */}
+      <div className="mb-14">
+        <div className="flex flex-col gap-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full w-fit">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+            <span className="text-[10px] font-extrabold text-primary uppercase tracking-[0.2em]">Canlı Akış</span>
+          </div>
+          
+          <h1 className="text-5xl md:text-6xl lg:text-7xl max-w-4xl leading-[1.05] tracking-tight">
+            Akıllı Piyasa <span className="text-primary italic">Analizi</span> ve Haberleri
           </h1>
-        </div>
-        <p className="text-forex-muted text-sm md:text-base">
-          Güvenilir kaynaklardan derlenen güncel forex haberleri ve AI destekli
-          piyasa analizleri
-        </p>
-        <div className="flex items-center gap-4 mt-3 text-xs text-forex-muted">
-          <span className="flex items-center gap-1">
-            🤖 AI ile özetleniyor
-          </span>
-          <span className="flex items-center gap-1">
-            🔄 Her 5 dakikada güncelleniyor
-          </span>
-          <span className="flex items-center gap-1">
-            📰 {articles.length} haber
-          </span>
+          
+          <p className="text-text-muted text-lg md:text-xl max-w-2xl leading-relaxed font-medium">
+            Yapay zeka ile güçlendirilmiş, gerçek zamanlı forex haberleri ve 
+            derinlemesine piyasa özetleri ile kararlarınızı temellendirin.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-8 mt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-[14px] bg-ui-dark flex items-center justify-center text-white font-bold shadow-lg">AI</div>
+              <div className="text-sm">
+                <p className="font-extrabold text-ui-dark">Yapay Zeka</p>
+                <p className="text-text-muted">Anlık Özetleme</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-[14px] bg-primary/20 flex items-center justify-center text-primary font-bold">5m</div>
+              <div className="text-sm">
+                <p className="font-extrabold text-ui-dark">Güncel Veri</p>
+                <p className="text-text-muted">Sürekli Yenilenen</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Haber Listesi */}
-      <NewsList articles={articles} />
+      <div className="relative min-h-[400px]">
+        <NewsList articles={articles} />
+      </div>
 
-      {/* SEO İçin Ek Metin */}
-      <section className="mt-12 bg-forex-card border border-forex-border rounded-xl p-6">
-        <h2 className="text-lg font-bold text-white mb-3">
-          Forex Piyasası Hakkında
-        </h2>
-        <div className="text-sm text-forex-muted space-y-2">
-          <p>
-            Forex (Foreign Exchange) piyasası, dünyanın en büyük ve en likit
-            finansal piyasasıdır. Günlük işlem hacmi 6 trilyon doları aşan bu
-            piyasada, döviz çiftleri aracılığıyla para birimleri alınıp
-            satılmaktadır.
-          </p>
-          <p>
-            EUR/USD, GBP/USD, USD/JPY ve USD/TRY gibi popüler döviz çiftlerinin
-            fiyat hareketleri; merkez bankası kararları, ekonomik veriler ve
-            jeopolitik gelişmelerden doğrudan etkilenmektedir.
-          </p>
-          <p>
-            Bu sayfada, güvenilir haber kaynaklarından derlenen güncel forex
-            haberlerini, yapay zeka destekli özetler ve piyasa analizleri ile
-            birlikte sunuyoruz.
-          </p>
+      {/* Bilgilendirme Kartı */}
+      <section className="mt-24 overflow-hidden rounded-[32px] bg-ui-dark p-10 md:p-16 relative">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 blur-[120px] -mr-48 -mt-48"></div>
+        <div className="relative z-10 flex flex-col lg:flex-row gap-16 items-center">
+          <div className="flex-1">
+            <h2 className="text-3xl md:text-4xl text-white mb-8 tracking-tight">Neden Bizi Takip Etmelisiniz?</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+              <div className="space-y-3">
+                <h3 className="text-primary text-xl font-black italic uppercase tracking-wider">Hız</h3>
+                <p className="text-slate-400 leading-relaxed">Piyasa hareketlerini saniyeler içinde analiz edin ve rakiplerinizin önüne geçin.</p>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-primary text-xl font-black italic uppercase tracking-wider">Doğruluk</h3>
+                <p className="text-slate-400 leading-relaxed">Gürültüyü temizleyen AI algoritmalarımızla en saf verilere ulaşın.</p>
+              </div>
+            </div>
+          </div>
+          <div className="w-full lg:w-auto">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[24px] text-white flex flex-col items-center text-center">
+              <p className="text-5xl font-black mb-2 text-primary">{articles.length}+</p>
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-[0.2em]">Günlük Analiz</p>
+            </div>
+          </div>
         </div>
       </section>
     </div>
