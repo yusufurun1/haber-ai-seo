@@ -34,10 +34,10 @@ export default function NewsDetail({ article }: NewsDetailProps) {
   const readingTime = estimateReadingTime(article.content);
   const hasContent = article.content && article.content.trim().length > 50;
 
+  const [summaryData, setSummaryData] = useState<any>(null);
+
   // Expanded content'i client-side'da lazy load et
-  const fetchExpandedContent = useCallback(async () => {
-    if (article.expandedContent) return; // Zaten varsa tekrar çekme
-    
+  const fetchAllAIData = useCallback(async () => {
     try {
       setExpandedLoading(true);
       setExpandedError(false);
@@ -49,14 +49,17 @@ export default function NewsDetail({ article }: NewsDetailProps) {
           title: article.title,
           content: article.content,
           sourceName: article.sourceName,
-          expand: true, // Expanded content de iste
+          expand: true, // Hem özet hem detaylı analiz iste
         }),
       });
       
       const data = await res.json();
       
-      if (data.success && data.data?.expandedArticle) {
-        setExpandedContent(data.data.expandedArticle);
+      if (data.success && data.data) {
+        setSummaryData(data.data);
+        if (data.data.expandedArticle) {
+          setExpandedContent(data.data.expandedArticle);
+        }
       } else {
         setExpandedError(true);
       }
@@ -65,12 +68,12 @@ export default function NewsDetail({ article }: NewsDetailProps) {
     } finally {
       setExpandedLoading(false);
     }
-  }, [article.title, article.content, article.sourceName, article.expandedContent]);
+  }, [article.title, article.content, article.sourceName]);
 
   useEffect(() => {
-    // Sayfa yüklendiğinde expanded content'i çek
-    fetchExpandedContent();
-  }, [fetchExpandedContent]);
+    // Sayfa yüklendiğinde tüm AI verilerini tek seferde çek
+    fetchAllAIData();
+  }, [fetchAllAIData]);
 
   return (
     <article className="max-w-4xl mx-auto animate-fadeIn">
@@ -133,7 +136,8 @@ export default function NewsDetail({ article }: NewsDetailProps) {
             title={article.title}
             content={article.content}
             sourceName={article.sourceName}
-            initialSummary={article.aiSummary}
+            initialSummary={summaryData || article.aiSummary}
+            isLoading={expandedLoading}
           />
         </div>
       </div>
@@ -179,7 +183,7 @@ export default function NewsDetail({ article }: NewsDetailProps) {
               Yapay zeka şu an yoğun olduğu için analiz yüklenemedi. Lütfen tekrar deneyin.
             </p>
             <button
-              onClick={() => fetchExpandedContent()}
+              onClick={() => fetchAllAIData()}
               className="px-8 py-3 bg-red-600 text-white rounded-full font-black uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 text-xs"
             >
               🔄 Tekrar Dene

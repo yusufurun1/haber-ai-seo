@@ -13,6 +13,7 @@ interface AISummaryProps {
   content: string;
   sourceName: string;
   initialSummary?: AISummaryType;
+  isLoading?: boolean;
 }
 
 export default function AISummary({
@@ -20,11 +21,12 @@ export default function AISummary({
   content,
   sourceName,
   initialSummary,
+  isLoading: parentLoading,
 }: AISummaryProps) {
   const [summary, setSummary] = useState<AISummaryType | null>(
     initialSummary || null
   );
-  const [loading, setLoading] = useState(!initialSummary);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -53,9 +55,18 @@ export default function AISummary({
   }, [title, content, sourceName]);
 
   useEffect(() => {
-    if (initialSummary) return;
-    fetchSummary();
-  }, [initialSummary, fetchSummary]);
+    // Sadece eğer initialSummary yoksa VE ebeveyn yükleme yapmıyorsa VE henüz özetimiz yoksa istek at
+    if (!initialSummary && !parentLoading && !summary) {
+      fetchSummary();
+    }
+  }, [initialSummary, parentLoading, summary, fetchSummary]);
+
+  // initialSummary değişirse (ebeveyn yüklemeyi bitirdiğinde) state'i güncelle
+  useEffect(() => {
+    if (initialSummary) {
+      setSummary(initialSummary);
+    }
+  }, [initialSummary]);
 
   const handleRetry = () => {
     setRetryCount((c) => c + 1);
@@ -63,7 +74,7 @@ export default function AISummary({
   };
 
   // === LOADING STATE ===
-  if (loading) {
+  if (loading || (parentLoading && !summary)) {
     return (
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-6 animate-pulse">
         <div className="flex items-center gap-2 mb-4">
