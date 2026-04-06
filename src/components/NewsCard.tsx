@@ -15,12 +15,12 @@ function readingTime(html: string): number {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  technical: "bg-emerald-100 text-emerald-700",
-  fundamental: "bg-blue-100 text-blue-700",
-  market: "bg-slate-100 text-slate-600",
-  crypto: "bg-violet-100 text-violet-700",
-  commodities: "bg-yellow-100 text-yellow-700",
-  "central-banks": "bg-indigo-100 text-indigo-700",
+  technical: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  fundamental: "bg-blue-50 text-blue-700 border border-blue-200",
+  market: "bg-slate-50 text-slate-600 border border-slate-200",
+  crypto: "bg-violet-50 text-violet-700 border border-violet-200",
+  commodities: "bg-amber-50 text-amber-700 border border-amber-200",
+  "central-banks": "bg-indigo-50 text-indigo-700 border border-indigo-200",
 };
 
 export default function NewsCard({ article }: NewsCardProps) {
@@ -60,8 +60,8 @@ export default function NewsCard({ article }: NewsCardProps) {
           {/* Üst Bilgi */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             {/* Kategori rozeti */}
-            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${categoryClass}`}>
-              {categoryInfo.label}
+            <span className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md ${categoryClass}`}>
+              {categoryInfo.shortLabel}
             </span>
             <time dateTime={article.publishedAt} className="text-xs font-bold text-slate-400">
               {formatDateTurkish(article.publishedAt)}
@@ -86,7 +86,8 @@ export default function NewsCard({ article }: NewsCardProps) {
             </span>
             {/* Okuma süresi rozeti */}
             <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-              ⏱ {mins} min
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              {mins} min
             </span>
           </div>
         </div>

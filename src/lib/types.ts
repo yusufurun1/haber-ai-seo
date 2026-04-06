@@ -12,13 +12,13 @@ export type NewsCategory =
   | "central-banks"; // Merkez Bankaları
 
 /** Kategori bilgileri */
-export const CATEGORY_INFO: Record<NewsCategory, { label: string; icon: string }> = {
-  technical: { label: "Technical Analysis", icon: "📊" },
-  fundamental: { label: "Fundamental", icon: "📈" },
-  market: { label: "Market News", icon: "📰" },
-  crypto: { label: "Crypto", icon: "₿" },
-  commodities: { label: "Commodities", icon: "🪙" },
-  "central-banks": { label: "Central Banks", icon: "🏦" },
+export const CATEGORY_INFO: Record<NewsCategory, { label: string; shortLabel: string; color: string; bgColor: string; borderColor: string }> = {
+  technical: { label: "Technical Analysis", shortLabel: "Technical", color: "text-emerald-600", bgColor: "bg-emerald-50", borderColor: "border-emerald-200" },
+  fundamental: { label: "Fundamental Analysis", shortLabel: "Fundamental", color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
+  market: { label: "Market News", shortLabel: "Markets", color: "text-slate-600", bgColor: "bg-slate-50", borderColor: "border-slate-200" },
+  crypto: { label: "Crypto & Blockchain", shortLabel: "Crypto", color: "text-violet-600", bgColor: "bg-violet-50", borderColor: "border-violet-200" },
+  commodities: { label: "Commodities", shortLabel: "Commodities", color: "text-amber-600", bgColor: "bg-amber-50", borderColor: "border-amber-200" },
+  "central-banks": { label: "Central Banks", shortLabel: "Central Banks", color: "text-indigo-600", bgColor: "bg-indigo-50", borderColor: "border-indigo-200" },
 };
 
 /** Haber kaynağı tipi */

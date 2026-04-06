@@ -62,7 +62,6 @@ export default async function HomePage({
           <h1 className="text-5xl md:text-6xl lg:text-7xl max-w-4xl leading-[1.05] tracking-tight">
             {activeCategory ? (
               <>
-                {CATEGORY_INFO[activeCategory].icon}{" "}
                 <span className="text-primary italic">{CATEGORY_INFO[activeCategory].label}</span>
               </>
             ) : (
