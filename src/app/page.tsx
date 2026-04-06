@@ -7,8 +7,10 @@ import { Suspense } from "react";
 import { fetchAllNews } from "@/lib/news-fetcher";
 import NewsList from "@/components/NewsList";
 import SourceFilter from "@/components/SourceFilter";
+import CategoryFilter from "@/components/CategoryFilter";
 import { NewsListSkeleton } from "@/components/NewsCardSkeleton";
 import { formatDateTurkish } from "@/lib/seo-utils";
+import { NewsCategory, CATEGORY_INFO } from "@/lib/types";
 
 // 5 dakikada bir revalidate (ISR - Incremental Static Regeneration)
 export const revalidate = 300;
@@ -16,15 +18,20 @@ export const revalidate = 300;
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ source?: string; q?: string }>;
+  searchParams: Promise<{ source?: string; q?: string; category?: string }>;
 }) {
-  const { source, q } = await searchParams;
+  const { source, q, category } = await searchParams;
   const allArticles = await fetchAllNews();
 
   // Source filtresi
   let filtered = source
     ? allArticles.filter((a) => a.source === source)
     : allArticles;
+
+  // Kategori filtresi
+  if (category && Object.keys(CATEGORY_INFO).includes(category)) {
+    filtered = filtered.filter((a) => a.category === category);
+  }
 
   // Arama filtresi
   if (q && q.trim()) {
@@ -37,6 +44,7 @@ export default async function HomePage({
   }
 
   const lastUpdated = allArticles.length > 0 ? allArticles[0].publishedAt : null;
+  const activeCategory = category as NewsCategory | undefined;
 
   return (
     <div className="animate-fadeIn">
@@ -52,12 +60,20 @@ export default async function HomePage({
           </div>
 
           <h1 className="text-5xl md:text-6xl lg:text-7xl max-w-4xl leading-[1.05] tracking-tight">
-            Smart <span className="text-primary italic">Market</span> News
+            {activeCategory ? (
+              <>
+                {CATEGORY_INFO[activeCategory].icon}{" "}
+                <span className="text-primary italic">{CATEGORY_INFO[activeCategory].label}</span>
+              </>
+            ) : (
+              <>Smart <span className="text-primary italic">Market</span> News</>
+            )}
           </h1>
 
           <p className="text-text-muted text-lg md:text-xl max-w-2xl leading-relaxed font-medium">
-            Real-time forex news and market data from trusted sources
-            to power smarter trading decisions.
+            {activeCategory
+              ? `Browse the latest ${CATEGORY_INFO[activeCategory].label.toLowerCase()} from trusted sources.`
+              : "Real-time forex news and market data from trusted sources to power smarter trading decisions."}
           </p>
 
           <div className="flex flex-wrap items-center gap-8 mt-4">
@@ -68,9 +84,21 @@ export default async function HomePage({
                 <p className="text-text-muted">Continuously Updated</p>
               </div>
             </div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-[14px] bg-slate-100 flex items-center justify-center text-ui-dark font-bold">{allArticles.length}+</div>
+              <div className="text-sm">
+                <p className="font-extrabold text-ui-dark">Daily Articles</p>
+                <p className="text-text-muted">From 9 Sources</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Kategori Filtresi - ActionForex Benzeri */}
+      <Suspense fallback={null}>
+        <CategoryFilter />
+      </Suspense>
 
       {/* Kaynak Filtresi */}
       <Suspense fallback={null}>
@@ -80,6 +108,7 @@ export default async function HomePage({
       {/* Arama kutusu */}
       <form method="get" className="mb-8 flex gap-3">
         {source && <input type="hidden" name="source" value={source} />}
+        {category && <input type="hidden" name="category" value={category} />}
         <input
           type="search"
           name="q"
@@ -92,12 +121,12 @@ export default async function HomePage({
 
       {/* Haber Listesi */}
       <div className="relative min-h-[400px]">
-        {filtered.length === 0 && (q || source) ? (
+        {filtered.length === 0 && (q || source || category) ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🔍</div>
             <h2 className="text-2xl font-black text-ui-dark mb-3">No Results Found</h2>
             <p className="text-text-muted mb-8 max-w-sm mx-auto leading-relaxed">
-              {q ? `No news found for "${q}"` : source ? `No news found for source "${source}"` : "No news found."}
+              {q ? `No news found for "${q}"` : category ? `No news in this category yet.` : source ? `No news from "${source}"` : "No news found."}
             </p>
             <a
               href="/"

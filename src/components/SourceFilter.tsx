@@ -4,11 +4,16 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
 
 const SOURCES = [
-  { code: "", label: "Tümü" },
-  { code: "cointelegraph", label: "Cointelegraph" },
+  { code: "", label: "All Sources" },
   { code: "forexlive", label: "ForexLive" },
   { code: "financemagnates", label: "Finance Magnates" },
+  { code: "cointelegraph", label: "Cointelegraph" },
   { code: "coindesk", label: "CoinDesk" },
+  { code: "investing", label: "Investing.com" },
+  { code: "bloomberg", label: "Bloomberg" },
+  { code: "cnbc", label: "CNBC" },
+  { code: "yahoo", label: "Yahoo Finance" },
+  { code: "guardian", label: "The Guardian" },
 ];
 
 export default function SourceFilter() {
@@ -31,20 +36,23 @@ export default function SourceFilter() {
   );
 
   return (
-    <div className="flex flex-wrap gap-2 mb-10">
-      {SOURCES.map((s) => (
-        <button
-          key={s.code}
-          onClick={() => setSource(s.code)}
-          className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-200 border ${
-            active === s.code
-              ? "bg-primary text-white border-primary shadow-md"
-              : "bg-white text-slate-500 border-slate-200 hover:border-primary hover:text-primary"
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
+    <div className="mb-6">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Filter by Source</p>
+      <div className="flex flex-wrap gap-2">
+        {SOURCES.map((s) => (
+          <button
+            key={s.code}
+            onClick={() => setSource(s.code)}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 border ${
+              active === s.code
+                ? "bg-ui-dark text-white border-ui-dark"
+                : "bg-white text-slate-500 border-slate-200 hover:border-ui-dark hover:text-ui-dark"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

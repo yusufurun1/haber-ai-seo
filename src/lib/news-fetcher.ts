@@ -6,7 +6,7 @@
 // ==========================================
 
 import Parser from "rss-parser";
-import { NewsArticle, RawNewsItem } from "./types";
+import { NewsArticle, RawNewsItem, NewsCategory, CATEGORY_INFO } from "./types";
 import {
   isCacheValid,
   getCachedList,
@@ -22,6 +22,112 @@ import {
   cleanArticleHtml,
   isValidArticleImage,
 } from "./scraper";
+
+// ---- Kategori Atama Fonksiyonu ----
+
+const CATEGORY_PATTERNS: { category: NewsCategory; patterns: RegExp[] }[] = [
+  {
+    category: "technical",
+    patterns: [
+      /technical\s*analysis/i,
+      /chart\s*(alert|pattern|analysis)/i,
+      /\b(support|resistance)\b.*\b(level|line|zone)\b/i,
+      /\b(SMA|EMA|RSI|MACD|fibonacci|pivot\s*point|moving\s*average)\b/i,
+      /\b(bullish|bearish)\s*(pattern|signal|divergence|trend)\b/i,
+      /\b(candlestick|head\s*and\s*shoulders|double\s*(top|bottom)|wedge|triangle)\b/i,
+      /\btrade\s*setup\b/i,
+      /\bprice\s*(target|forecast|prediction)\b/i,
+      /\boutlook\b.*\b(EUR|USD|GBP|JPY|AUD|NZD|CAD|CHF)\b/i,
+    ],
+  },
+  {
+    category: "fundamental",
+    patterns: [
+      /fundamental\s*analysis/i,
+      /\b(GDP|inflation|unemployment|CPI|PPI|PMI|NFP|non-?farm)\b/i,
+      /\b(economic|trade)\s*(data|report|indicator|release)\b/i,
+      /\b(fiscal|monetary)\s*policy\b/i,
+      /\binterest\s*rate\s*(decision|hike|cut)\b/i,
+      /\b(hawkish|dovish)\b/i,
+      /\b(recession|stagflation|deflation)\b/i,
+      /\bmarket\s*sentiment\b/i,
+    ],
+  },
+  {
+    category: "central-banks",
+    patterns: [
+      /\b(Fed|Federal\s*Reserve|FOMC)\b/i,
+      /\b(ECB|European\s*Central\s*Bank)\b/i,
+      /\b(BoJ|Bank\s*of\s*Japan)\b/i,
+      /\b(BoE|Bank\s*of\s*England)\b/i,
+      /\b(SNB|Swiss\s*National\s*Bank)\b/i,
+      /\b(RBA|Reserve\s*Bank\s*of\s*Australia)\b/i,
+      /\b(RBNZ|Reserve\s*Bank\s*of\s*New\s*Zealand)\b/i,
+      /\b(BoC|Bank\s*of\s*Canada)\b/i,
+      /\bcentral\s*bank\b/i,
+      /\b(Powell|Lagarde|Kuroda|Ueda|Bailey)\b/i,
+    ],
+  },
+  {
+    category: "crypto",
+    patterns: [
+      /\b(Bitcoin|BTC|Ethereum|ETH|crypto|cryptocurrency)\b/i,
+      /\b(altcoin|DeFi|NFT|blockchain|Web3)\b/i,
+      /\b(Binance|Coinbase|Kraken|FTX)\b/i,
+      /\b(token|stablecoin|USDT|USDC)\b/i,
+      /\b(mining|halving|wallet)\b/i,
+    ],
+  },
+  {
+    category: "commodities",
+    patterns: [
+      /\b(gold|XAU|silver|XAG|platinum|palladium)\b/i,
+      /\b(oil|WTI|Brent|crude|petroleum|OPEC)\b/i,
+      /\b(natural\s*gas|copper|wheat|corn|soybean)\b/i,
+      /\bcommodit(y|ies)\b/i,
+    ],
+  },
+];
+
+/**
+ * Haber başlığı ve içeriğine göre otomatik kategori atar
+ */
+function detectCategory(title: string, description: string, source: string): NewsCategory {
+  const text = `${title} ${description}`.toLowerCase();
+  
+  // Kripto kaynakları için varsayılan crypto
+  if (source === "cointelegraph" || source === "coindesk") {
+    // Ama eğer technical/fundamental pattern varsa onu kullan
+    for (const { category, patterns } of CATEGORY_PATTERNS) {
+      if (category === "crypto") continue;
+      for (const pattern of patterns) {
+        if (pattern.test(text)) {
+          return category;
+        }
+      }
+    }
+    return "crypto";
+  }
+
+  // Pattern eşleşmesi ara
+  for (const { category, patterns } of CATEGORY_PATTERNS) {
+    for (const pattern of patterns) {
+      if (pattern.test(text)) {
+        return category;
+      }
+    }
+  }
+
+  // Varsayılan: market news
+  return "market";
+}
+
+/**
+ * Kategori kodundan okunabilir label döndürür
+ */
+function getCategoryLabel(category: NewsCategory): string {
+  return CATEGORY_INFO[category]?.label || "Market News";
+}
 
 // ---- Yardımcı Fonksiyonlar ----
 
@@ -225,18 +331,13 @@ function trimOgImageCache(): void {
 
 // Kaynaklar için hangi kaynaklarda og:image fetch yapılacak
 
-const OG_IMAGE_SOURCES = new Set(["forexlive", "financemagnates"]);
+const OG_IMAGE_SOURCES = new Set(["forexlive", "financemagnates", "investing", "bloomberg", "cnbc"]);
 
 
-// ---- RSS Feed Listesi (7 Kaynak) ----
+// ---- RSS Feed Listesi (10 Kaliteli Kaynak) ----
 
 const RSS_FEEDS: FeedConfig[] = [
-  {
-    url: "https://cointelegraph.com/rss",
-    sourceCode: "cointelegraph",
-    sourceName: "Cointelegraph",
-    timeoutMs: 10000,
-  },
+  // Forex & Finans Kaynakları
   {
     url: "https://www.forexlive.com/feed",
     sourceCode: "forexlive",
@@ -249,10 +350,48 @@ const RSS_FEEDS: FeedConfig[] = [
     sourceName: "Finance Magnates",
     timeoutMs: 12000,
   },
+  // Kripto Kaynakları
+  {
+    url: "https://cointelegraph.com/rss",
+    sourceCode: "cointelegraph",
+    sourceName: "Cointelegraph",
+    timeoutMs: 10000,
+  },
   {
     url: "https://www.coindesk.com/arc/outboundfeeds/rss/",
     sourceCode: "coindesk",
     sourceName: "CoinDesk",
+    timeoutMs: 12000,
+  },
+  // Uluslararası Finans Kuruluşları
+  {
+    url: "https://www.investing.com/rss/news.rss",
+    sourceCode: "investing",
+    sourceName: "Investing.com",
+    timeoutMs: 12000,
+  },
+  {
+    url: "https://feeds.bloomberg.com/markets/news.rss",
+    sourceCode: "bloomberg",
+    sourceName: "Bloomberg",
+    timeoutMs: 12000,
+  },
+  {
+    url: "https://www.cnbc.com/id/10000664/device/rss/rss.html",
+    sourceCode: "cnbc",
+    sourceName: "CNBC",
+    timeoutMs: 12000,
+  },
+  {
+    url: "https://finance.yahoo.com/news/rssindex",
+    sourceCode: "yahoo",
+    sourceName: "Yahoo Finance",
+    timeoutMs: 12000,
+  },
+  {
+    url: "https://www.theguardian.com/business/economics/rss",
+    sourceCode: "guardian",
+    sourceName: "The Guardian",
     timeoutMs: 12000,
   },
 ];
@@ -349,6 +488,9 @@ async function fetchSingleFeed(feedConfig: FeedConfig): Promise<RawNewsItem[]> {
 
           const author = String(raw.dcCreator || raw.creator || "").trim() || null;
 
+          // Otomatik kategori ata
+          const category = detectCategory(title, rawDesc, sourceCode);
+
           return {
             title,
             description: rawDesc.substring(0, 200) + (rawDesc.length > 200 ? "..." : ""),
@@ -359,6 +501,7 @@ async function fetchSingleFeed(feedConfig: FeedConfig): Promise<RawNewsItem[]> {
             source: sourceCode,
             sourceName,
             author,
+            category,
           } as RawNewsItem;
         })
       );
@@ -462,9 +605,12 @@ export async function fetchAllNews(): Promise<NewsArticle[]> {
 
     const result: NewsArticle[] = unique.map((item) => {
       const slug = generateSlug(item.title);
+      // Category zaten item'da mevcut veya yeniden hesapla
+      const category = item.category || detectCategory(item.title, item.description, item.source);
       return {
         ...item,
         slug,
+        category,
         seoMeta: {
           title: item.title.substring(0, 55) + " | Forex Haber",
           description: item.description,
@@ -475,7 +621,7 @@ export async function fetchAllNews(): Promise<NewsArticle[]> {
           articlePublishedTime: item.publishedAt,
           articleModifiedTime: item.publishedAt,
           articleAuthor: item.author || item.sourceName,
-          articleSection: detectCategory(item.title),
+          articleSection: getCategoryLabel(category),
         },
       };
     });
@@ -518,17 +664,6 @@ export async function fetchNewsBySlug(slug: string): Promise<NewsArticle | null>
 }
 
 // ---- Yardımcılar ----
-
-function detectCategory(title: string): string {
-  if (/fed|fomc|powell|federal reserve/i.test(title)) return "Fed";
-  if (/ecb|lagarde|euro/i.test(title)) return "ECB";
-  if (/boj|bank of japan|yen/i.test(title)) return "BOJ";
-  if (/tcmb|merkez bankası|türkiye/i.test(title)) return "TCMB";
-  if (/bitcoin|crypto|btc|ethereum/i.test(title)) return "Kripto";
-  if (/gold|altın|xau/i.test(title)) return "Emtia";
-  if (/technical|teknik|rsi|macd/i.test(title)) return "Teknik Analiz";
-  return "Ekonomi";
-}
 
 function extractKeywords(text: string, sourceName: string): string[] {
   const base = [sourceName.toLowerCase(), "forex", "haber", "döviz", "finans"];
@@ -612,5 +747,6 @@ function getDemoNews(): NewsArticle[] {
     sourceName: "Forex Haber",
     author: "Forex Analist",
     slug: generateSlug(d.title),
+    category: detectCategory(d.title, d.desc, "demo"),
   }));
 }

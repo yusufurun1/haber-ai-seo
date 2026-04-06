@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { NewsArticle } from "@/lib/types";
+import { NewsArticle, CATEGORY_INFO } from "@/lib/types";
 import { formatDateTurkish } from "@/lib/seo-utils";
 
 interface NewsCardProps {
@@ -15,14 +15,12 @@ function readingTime(html: string): number {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Fed: "bg-blue-100 text-blue-700",
-  ECB: "bg-indigo-100 text-indigo-700",
-  BOJ: "bg-rose-100 text-rose-700",
-  TCMB: "bg-orange-100 text-orange-700",
-  Crypto: "bg-violet-100 text-violet-700",
-  Commodities: "bg-yellow-100 text-yellow-700",
-  "Technical Analysis": "bg-emerald-100 text-emerald-700",
-  Economy: "bg-slate-100 text-slate-600",
+  technical: "bg-emerald-100 text-emerald-700",
+  fundamental: "bg-blue-100 text-blue-700",
+  market: "bg-slate-100 text-slate-600",
+  crypto: "bg-violet-100 text-violet-700",
+  commodities: "bg-yellow-100 text-yellow-700",
+  "central-banks": "bg-indigo-100 text-indigo-700",
 };
 
 export default function NewsCard({ article }: NewsCardProps) {
@@ -30,8 +28,9 @@ export default function NewsCard({ article }: NewsCardProps) {
 
   const showImage = article.imageUrl && !imgError;
   const mins = readingTime(article.content || article.description || "");
-  const category = article.seoMeta?.articleSection || "Economy";
-  const categoryClass = CATEGORY_COLORS[category] ?? CATEGORY_COLORS["Economy"];
+  const category = article.category || "market";
+  const categoryInfo = CATEGORY_INFO[category];
+  const categoryClass = CATEGORY_COLORS[category] ?? CATEGORY_COLORS["market"];
 
   return (
     <article className="group relative bg-white border border-slate-200 rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-[0_20px_50px_rgba(31,209,118,0.1)] hover:-translate-y-1">
@@ -62,7 +61,7 @@ export default function NewsCard({ article }: NewsCardProps) {
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             {/* Kategori rozeti */}
             <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${categoryClass}`}>
-              {category}
+              {categoryInfo.label}
             </span>
             <time dateTime={article.publishedAt} className="text-xs font-bold text-slate-400">
               {formatDateTurkish(article.publishedAt)}

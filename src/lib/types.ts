@@ -2,12 +2,37 @@
 // Forex Haber - TypeScript Tip Tanımları
 // ==========================================
 
+/** Haber kategorileri */
+export type NewsCategory =
+  | "technical"    // Teknik Analiz
+  | "fundamental"  // Temel Analiz
+  | "market"       // Piyasa Haberleri
+  | "crypto"       // Kripto
+  | "commodities"  // Emtia (Gold, Oil)
+  | "central-banks"; // Merkez Bankaları
+
+/** Kategori bilgileri */
+export const CATEGORY_INFO: Record<NewsCategory, { label: string; icon: string }> = {
+  technical: { label: "Technical Analysis", icon: "📊" },
+  fundamental: { label: "Fundamental", icon: "📈" },
+  market: { label: "Market News", icon: "📰" },
+  crypto: { label: "Crypto", icon: "₿" },
+  commodities: { label: "Commodities", icon: "🪙" },
+  "central-banks": { label: "Central Banks", icon: "🏦" },
+};
+
 /** Haber kaynağı tipi */
 export type NewsSource =
   | "cointelegraph"
   | "forexlive"
   | "financemagnates"
   | "coindesk"
+  | "investing"
+  | "bloomberg"
+  | "cnbc"
+  | "yahoo"
+  | "guardian"
+  | "ft"
   | "demo";
 
 /** Ham haber verisi (kaynaklardan çekilen) */
@@ -21,11 +46,13 @@ export interface RawNewsItem {
   source: string;
   sourceName: string;
   author: string | null;
+  category?: NewsCategory;
 }
 
 /** İşlenmiş haber verisi (slug ile) */
 export interface NewsArticle extends RawNewsItem {
   slug: string;
+  category: NewsCategory;
   seoMeta?: SEOMeta;
 }
 
