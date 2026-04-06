@@ -9,18 +9,24 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#1fd176",
-          hover: "#19b363",
+          DEFAULT: "#10b981",
+          hover: "#059669",
+          light: "#d1fae5",
         },
-        "ui-dark": "#1e2433",
-        "bg-main": "#ffffff",
-        "bg-alt": "#f8fbfc",
-        "text-main": "#1e2433",
+        "ui-dark": "#0f172a",
+        "bg-main": "#f8fafc",
+        "bg-card": "#ffffff",
+        "bg-alt": "#f1f5f9",
+        "text-main": "#0f172a",
         "text-muted": "#64748b",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        heading: ["Lato", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        heading: ["Space Grotesk", "Inter", "sans-serif"],
+      },
+      borderRadius: {
+        '2xl': '16px',
+        '3xl': '24px',
       },
     },
   },

@@ -95,15 +95,11 @@ export default function RootLayout({
         />
         {/* PWA manifest */}
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1fd176" />
+        <meta name="theme-color" content="#10b981" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className="min-h-screen bg-bg-main antialiased selection:bg-primary/30 selection:text-ui-dark">
-        {/* 
-          Aşama 1: Header/Footer yok
-          Design: comofx inspired minimalist start
-        */}
-        <main className="container mx-auto px-4 py-12 max-w-6xl">
+      <body className="min-h-screen bg-bg-main antialiased selection:bg-primary/20 selection:text-ui-dark">
+        <main className="container mx-auto px-4 sm:px-6 py-8 md:py-12 max-w-7xl">
           {children}
         </main>
       </body>

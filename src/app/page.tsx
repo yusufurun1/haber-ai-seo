@@ -1,6 +1,5 @@
 // ==========================================
-// Ana Sayfa - Forex Haber Listesi
-// SSR ile haber çekme (SEO uyumlu)
+// Ana Sayfa - Kategori Bazlı Dinamik UI
 // ==========================================
 
 import { Suspense } from "react";
@@ -12,8 +11,28 @@ import { NewsListSkeleton } from "@/components/NewsCardSkeleton";
 import { formatDateTurkish } from "@/lib/seo-utils";
 import { NewsCategory, CATEGORY_INFO } from "@/lib/types";
 
-// 5 dakikada bir revalidate (ISR - Incremental Static Regeneration)
 export const revalidate = 300;
+
+// Kategori bazlı gradient mapping (Tailwind JIT safe)
+const HERO_GRADIENTS: Record<string, string> = {
+  technical: "from-emerald-600 via-emerald-500 to-teal-500",
+  fundamental: "from-blue-600 via-blue-500 to-indigo-500",
+  market: "from-slate-700 via-slate-600 to-slate-500",
+  crypto: "from-violet-600 via-violet-500 to-purple-500",
+  commodities: "from-amber-600 via-amber-500 to-orange-500",
+  "central-banks": "from-indigo-600 via-indigo-500 to-blue-500",
+  default: "from-slate-900 via-slate-800 to-slate-700",
+};
+
+const HERO_ACCENT_DOT: Record<string, string> = {
+  technical: "bg-emerald-400",
+  fundamental: "bg-blue-400",
+  market: "bg-slate-400",
+  crypto: "bg-violet-400",
+  commodities: "bg-amber-400",
+  "central-banks": "bg-indigo-400",
+  default: "bg-emerald-400",
+};
 
 export default async function HomePage({
   searchParams,
@@ -23,17 +42,14 @@ export default async function HomePage({
   const { source, q, category } = await searchParams;
   const allArticles = await fetchAllNews();
 
-  // Source filtresi
   let filtered = source
     ? allArticles.filter((a) => a.source === source)
     : allArticles;
 
-  // Kategori filtresi
   if (category && Object.keys(CATEGORY_INFO).includes(category)) {
     filtered = filtered.filter((a) => a.category === category);
   }
 
-  // Arama filtresi
   if (q && q.trim()) {
     const lower = q.toLowerCase();
     filtered = filtered.filter(
@@ -44,95 +60,96 @@ export default async function HomePage({
   }
 
   const lastUpdated = allArticles.length > 0 ? allArticles[0].publishedAt : null;
-  const activeCategory = category as NewsCategory | undefined;
+  const cat = category as NewsCategory | undefined;
+  const catInfo = cat ? CATEGORY_INFO[cat] : null;
+  const heroGradient = HERO_GRADIENTS[cat || "default"];
+  const dotColor = HERO_ACCENT_DOT[cat || "default"];
 
   return (
-    <div className="animate-fadeIn">
-      {/* Sayfa Başlığı (Hero) */}
-      <div className="mb-14">
-        <div className="flex flex-col gap-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full w-fit">
+    <div className="animate-fadeIn space-y-8">
+
+      {/* ===== HERO SECTION ===== */}
+      <section className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${heroGradient} px-8 py-12 md:px-12 md:py-16`}>
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+        
+        <div className="relative z-10">
+          {/* Live indicator */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full mb-6">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotColor} opacity-75`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`}></span>
             </span>
-            <span className="text-[10px] font-extrabold text-primary uppercase tracking-[0.2em]">Live Feed</span>
+            <span className="text-[11px] font-semibold text-white/90 uppercase tracking-widest">Live Feed</span>
           </div>
 
-          <h1 className="text-5xl md:text-6xl lg:text-7xl max-w-4xl leading-[1.05] tracking-tight">
-            {activeCategory ? (
-              <>
-                <span className="text-primary italic">{CATEGORY_INFO[activeCategory].label}</span>
-              </>
-            ) : (
-              <>Smart <span className="text-primary italic">Market</span> News</>
-            )}
+          {/* Title */}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white max-w-3xl leading-[1.1] tracking-tight mb-4">
+            {catInfo ? catInfo.label : "Market Intelligence"}
           </h1>
 
-          <p className="text-text-muted text-lg md:text-xl max-w-2xl leading-relaxed font-medium">
-            {activeCategory
-              ? `Browse the latest ${CATEGORY_INFO[activeCategory].label.toLowerCase()} from trusted sources.`
-              : "Real-time forex news and market data from trusted sources to power smarter trading decisions."}
+          {/* Subtitle */}
+          <p className="text-white/70 text-base md:text-lg max-w-xl leading-relaxed mb-8">
+            {catInfo
+              ? catInfo.heroSubtitle
+              : "Real-time news and analysis from trusted financial sources worldwide."}
           </p>
 
-          <div className="flex flex-wrap items-center gap-8 mt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-[14px] bg-primary/20 flex items-center justify-center text-primary font-bold">5m</div>
-              <div className="text-sm">
-                <p className="font-extrabold text-ui-dark">Live Data</p>
-                <p className="text-text-muted">Continuously Updated</p>
-              </div>
+          {/* Stats row */}
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 backdrop-blur-sm rounded-xl">
+              <span className="text-2xl font-bold text-white">{filtered.length}</span>
+              <span className="text-xs text-white/60 font-medium leading-tight">articles<br/>available</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-[14px] bg-slate-100 flex items-center justify-center text-ui-dark font-bold">{allArticles.length}+</div>
-              <div className="text-sm">
-                <p className="font-extrabold text-ui-dark">Daily Articles</p>
-                <p className="text-text-muted">From 9 Sources</p>
-              </div>
+            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 backdrop-blur-sm rounded-xl">
+              <span className="text-2xl font-bold text-white">6</span>
+              <span className="text-xs text-white/60 font-medium leading-tight">trusted<br/>sources</span>
+            </div>
+            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 backdrop-blur-sm rounded-xl">
+              <span className="text-2xl font-bold text-white">5m</span>
+              <span className="text-xs text-white/60 font-medium leading-tight">refresh<br/>interval</span>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Kategori Filtresi - ActionForex Benzeri */}
+      {/* ===== CATEGORY FILTER ===== */}
       <Suspense fallback={null}>
         <CategoryFilter />
       </Suspense>
 
-      {/* Kaynak Filtresi */}
-      <Suspense fallback={null}>
-        <SourceFilter />
-      </Suspense>
+      {/* ===== SOURCE FILTER + SEARCH ===== */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <Suspense fallback={null}>
+          <SourceFilter />
+        </Suspense>
 
-      {/* Arama kutusu */}
-      <form method="get" className="mb-8 flex gap-3">
-        {source && <input type="hidden" name="source" value={source} />}
-        {category && <input type="hidden" name="category" value={category} />}
-        <input
-          type="search"
-          name="q"
-          defaultValue={q || ""}
-          placeholder="Search news... (EUR/USD, FOMC...)"
-          className="flex-1 px-5 py-3 rounded-full border border-slate-200 text-sm font-medium text-ui-dark placeholder:text-slate-400 focus:outline-none focus:border-primary transition-colors"
-        />
-        <button type="submit" className="btn-primary px-6">Search</button>
-      </form>
+        <form method="get" className="w-full sm:w-auto sm:min-w-[320px]">
+          {source && <input type="hidden" name="source" value={source} />}
+          {category && <input type="hidden" name="category" value={category} />}
+          <div className="relative">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            <input
+              type="search"
+              name="q"
+              defaultValue={q || ""}
+              placeholder="Search news..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            />
+          </div>
+        </form>
+      </div>
 
-      {/* Haber Listesi */}
+      {/* ===== NEWS GRID ===== */}
       <div className="relative min-h-[400px]">
         {filtered.length === 0 && (q || source || category) ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🔍</div>
-            <h2 className="text-2xl font-black text-ui-dark mb-3">No Results Found</h2>
-            <p className="text-text-muted mb-8 max-w-sm mx-auto leading-relaxed">
-              {q ? `No news found for "${q}"` : category ? `No news in this category yet.` : source ? `No news from "${source}"` : "No news found."}
+          <div className="text-center py-20 bg-white rounded-2xl border border-slate-100">
+            <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">No Results Found</h2>
+            <p className="text-slate-500 mb-6 max-w-sm mx-auto text-sm">
+              {q ? `No news matching "${q}"` : category ? "No news in this category yet." : "No news from this source."}
             </p>
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors"
-            >
-              Reset Filters
-            </a>
+            <a href="/" className="btn-primary">Clear Filters</a>
           </div>
         ) : (
           <Suspense fallback={<NewsListSkeleton count={6} />}>
@@ -141,38 +158,12 @@ export default async function HomePage({
         )}
       </div>
 
-      {/* Son Güncelleme Zamanı */}
+      {/* ===== LAST UPDATED ===== */}
       {lastUpdated && (
-        <p className="text-center text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-10">
-          Last updated: {formatDateTurkish(lastUpdated)}
+        <p className="text-center text-[11px] text-slate-400 font-medium pt-4">
+          Last updated {formatDateTurkish(lastUpdated)}
         </p>
       )}
-
-      {/* Bilgilendirme Kartı */}
-      <section className="mt-24 overflow-hidden rounded-[32px] bg-ui-dark p-10 md:p-16 relative">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 blur-[120px] -mr-48 -mt-48"></div>
-        <div className="relative z-10 flex flex-col lg:flex-row gap-16 items-center">
-          <div className="flex-1">
-            <h2 className="text-3xl md:text-4xl text-white mb-8 tracking-tight">Why Follow Us?</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-              <div className="space-y-3">
-                <h3 className="text-primary text-xl font-black italic uppercase tracking-wider">Speed</h3>
-                <p className="text-slate-400 leading-relaxed">Analyze market movements in seconds and stay ahead of the competition.</p>
-              </div>
-              <div className="space-y-3">
-                <h3 className="text-primary text-xl font-black italic uppercase tracking-wider">Accuracy</h3>
-                <p className="text-slate-400 leading-relaxed">Access the cleanest and most original data with our automated aggregation algorithms.</p>
-              </div>
-            </div>
-          </div>
-          <div className="w-full lg:w-auto">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[24px] text-white flex flex-col items-center text-center">
-              <p className="text-5xl font-black mb-2 text-primary">{allArticles.length}+</p>
-              <p className="text-xs text-slate-400 uppercase font-bold tracking-[0.2em]">Daily Articles</p>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

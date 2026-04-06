@@ -33,23 +33,20 @@ export default function SourceFilter() {
   );
 
   return (
-    <div className="mb-6">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Filter by Source</p>
-      <div className="flex flex-wrap gap-2">
-        {SOURCES.map((s) => (
-          <button
-            key={s.code}
-            onClick={() => setSource(s.code)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 border ${
-              active === s.code
-                ? "bg-ui-dark text-white border-ui-dark"
-                : "bg-white text-slate-500 border-slate-200 hover:border-ui-dark hover:text-ui-dark"
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-wrap items-center gap-1.5">
+      {SOURCES.map((s) => (
+        <button
+          key={s.code}
+          onClick={() => setSource(s.code)}
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 border ${
+            active === s.code
+              ? "bg-slate-900 text-white border-slate-900"
+              : "bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700"
+          }`}
+        >
+          {s.label}
+        </button>
+      ))}
     </div>
   );
 }

@@ -12,13 +12,83 @@ export type NewsCategory =
   | "central-banks"; // Merkez Bankaları
 
 /** Kategori bilgileri */
-export const CATEGORY_INFO: Record<NewsCategory, { label: string; shortLabel: string; color: string; bgColor: string; borderColor: string }> = {
-  technical: { label: "Technical Analysis", shortLabel: "Technical", color: "text-emerald-600", bgColor: "bg-emerald-50", borderColor: "border-emerald-200" },
-  fundamental: { label: "Fundamental Analysis", shortLabel: "Fundamental", color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
-  market: { label: "Market News", shortLabel: "Markets", color: "text-slate-600", bgColor: "bg-slate-50", borderColor: "border-slate-200" },
-  crypto: { label: "Crypto & Blockchain", shortLabel: "Crypto", color: "text-violet-600", bgColor: "bg-violet-50", borderColor: "border-violet-200" },
-  commodities: { label: "Commodities", shortLabel: "Commodities", color: "text-amber-600", bgColor: "bg-amber-50", borderColor: "border-amber-200" },
-  "central-banks": { label: "Central Banks", shortLabel: "Central Banks", color: "text-indigo-600", bgColor: "bg-indigo-50", borderColor: "border-indigo-200" },
+export const CATEGORY_INFO: Record<NewsCategory, {
+  label: string;
+  shortLabel: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  gradient: string;
+  accent: string;
+  accentLight: string;
+  heroSubtitle: string;
+}> = {
+  technical: {
+    label: "Technical Analysis",
+    shortLabel: "Technical",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-200",
+    gradient: "from-emerald-500 to-teal-600",
+    accent: "emerald",
+    accentLight: "bg-emerald-500/10",
+    heroSubtitle: "Chart patterns, support/resistance levels, and indicator-based market signals.",
+  },
+  fundamental: {
+    label: "Fundamental Analysis",
+    shortLabel: "Fundamental",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+    gradient: "from-blue-500 to-indigo-600",
+    accent: "blue",
+    accentLight: "bg-blue-500/10",
+    heroSubtitle: "Economic data, GDP reports, inflation metrics, and macroeconomic analysis.",
+  },
+  market: {
+    label: "Market News",
+    shortLabel: "Markets",
+    color: "text-slate-600",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-200",
+    gradient: "from-slate-600 to-slate-800",
+    accent: "slate",
+    accentLight: "bg-slate-500/10",
+    heroSubtitle: "Breaking market movements, price action, and real-time trading news.",
+  },
+  crypto: {
+    label: "Crypto & Blockchain",
+    shortLabel: "Crypto",
+    color: "text-violet-600",
+    bgColor: "bg-violet-50",
+    borderColor: "border-violet-200",
+    gradient: "from-violet-500 to-purple-600",
+    accent: "violet",
+    accentLight: "bg-violet-500/10",
+    heroSubtitle: "Bitcoin, Ethereum, DeFi protocols, and blockchain ecosystem updates.",
+  },
+  commodities: {
+    label: "Commodities",
+    shortLabel: "Commodities",
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-200",
+    gradient: "from-amber-500 to-orange-600",
+    accent: "amber",
+    accentLight: "bg-amber-500/10",
+    heroSubtitle: "Gold, silver, oil, natural gas, and raw material market analysis.",
+  },
+  "central-banks": {
+    label: "Central Banks",
+    shortLabel: "Central Banks",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+    borderColor: "border-indigo-200",
+    gradient: "from-indigo-500 to-blue-700",
+    accent: "indigo",
+    accentLight: "bg-indigo-500/10",
+    heroSubtitle: "Fed, ECB, BoJ decisions, interest rate changes, and monetary policy updates.",
+  },
 };
 
 /** Haber kaynağı tipi */

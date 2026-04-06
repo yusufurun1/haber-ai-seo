@@ -63,24 +63,25 @@ export default function NewsDetail({ article }: NewsDetailProps) {
           </span>
         )}
         {hasContent && (
-          <span className="text-sm text-slate-500 flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full font-bold">
-            ⏱ {readingTime} min read
+          <span className="text-sm text-slate-500 flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-lg font-medium">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            {readingTime} min read
           </span>
         )}
       </div>
 
       {/* Başlık - Büyük ve Etkileyici */}
-      <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-ui-dark mb-10 leading-[1.1] tracking-tight">
+      <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-10 leading-[1.15] tracking-tight">
         {article.title}
       </h1>
 
-      {/* Haber Görseli - Premium Görünüm */}
-      <div className="relative w-full h-[400px] md:h-[500px] rounded-[32px] overflow-hidden mb-12 shadow-2xl">
+      {/* Haber Görseli */}
+      <div className="relative w-full aspect-[2/1] rounded-2xl overflow-hidden mb-12 bg-slate-100">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={!imgError && article.imageUrl ? article.imageUrl : "/news-placeholder.png"}
           alt={article.title}
-          className="w-full h-full object-cover transition-transform duration-1000 hover:scale-105"
+          className="w-full h-full object-cover"
           onError={() => setImgError(true)}
         />
       </div>
@@ -89,9 +90,9 @@ export default function NewsDetail({ article }: NewsDetailProps) {
 
       {/* Orijinal Haber İçeriği */}
       <div className="mb-16">
-        <div className="bg-white border border-slate-200 rounded-[32px] p-8 md:p-14 shadow-sm">
-          <h2 className="text-xs font-black text-ui-dark/40 uppercase tracking-[0.3em] mb-10 flex items-center gap-4">
-            <span className="w-8 h-[1px] bg-slate-200"></span> 📰 Original Content
+        <div className="bg-white border border-slate-200 rounded-2xl p-8 md:p-12">
+          <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-3">
+            <span className="w-6 h-px bg-slate-200"></span> Article Content
           </h2>
 
           {hasContent ? (
@@ -110,35 +111,34 @@ export default function NewsDetail({ article }: NewsDetailProps) {
                 rel="noopener noreferrer nofollow"
                 className="btn-primary"
               >
-                🔗 Read Original Article
+                Read Original Article
               </a>
             </div>
           )}
 
           {/* Orijinal Kaynağa Git Butonu */}
-          <div className="mt-12 pt-10 border-t border-slate-100 flex flex-col items-center">
+          <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col items-center gap-4">
             <a
               href={article.url}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="group inline-flex items-center gap-3 text-sm font-black uppercase tracking-widest text-primary hover:text-primary-hover transition-all"
+              className="group inline-flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
             >
-              View full article <span className="transition-transform group-hover:translate-x-2">→</span>
+              View full article on {article.sourceName}
+              <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
             </a>
-            <p className="text-[10px] text-slate-400 mt-6 font-bold uppercase tracking-widest">
-              Source: <span className="text-ui-dark">{article.sourceName}</span>
-            </p>
           </div>
         </div>
       </div>
 
       {/* Geri Dön Butonu */}
-      <div className="py-12 border-t border-slate-100 flex justify-center">
+      <div className="py-10 border-t border-slate-100 flex justify-center">
         <Link
           href="/"
-          className="group flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 hover:text-ui-dark transition-all"
+          className="group inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
         >
-          <span className="transition-transform group-hover:-translate-x-2">←</span> All News
+          <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+          Back to all news
         </Link>
       </div>
     </article>
