@@ -27,12 +27,8 @@ export type NewsSource =
   | "forexlive"
   | "financemagnates"
   | "coindesk"
-  | "investing"
-  | "bloomberg"
   | "cnbc"
-  | "yahoo"
   | "guardian"
-  | "actionforex"
   | "demo";
 
 /** Ham haber verisi (kaynaklardan çekilen) */

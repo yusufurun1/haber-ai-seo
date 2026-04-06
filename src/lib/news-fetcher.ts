@@ -331,10 +331,10 @@ function trimOgImageCache(): void {
 
 // Kaynaklar için hangi kaynaklarda og:image fetch yapılacak
 
-const OG_IMAGE_SOURCES = new Set(["forexlive", "financemagnates", "investing", "bloomberg", "cnbc", "yahoo", "guardian", "actionforex"]);
+const OG_IMAGE_SOURCES = new Set(["forexlive", "financemagnates", "cnbc", "guardian"]);
 
 
-// ---- RSS Feed Listesi (10 Kaliteli Kaynak) ----
+// ---- RSS Feed Listesi (6 Kaliteli Kaynak) ----
 
 const RSS_FEEDS: FeedConfig[] = [
   // Forex & Finans Kaynakları
@@ -350,12 +350,6 @@ const RSS_FEEDS: FeedConfig[] = [
     sourceName: "Finance Magnates",
     timeoutMs: 12000,
   },
-  {
-    url: "https://www.actionforex.com/feed/",
-    sourceCode: "actionforex",
-    sourceName: "ActionForex",
-    timeoutMs: 12000,
-  },
   // Kripto Kaynakları
   {
     url: "https://cointelegraph.com/rss",
@@ -369,29 +363,11 @@ const RSS_FEEDS: FeedConfig[] = [
     sourceName: "CoinDesk",
     timeoutMs: 12000,
   },
-  // Uluslararası Finans Kuruluşları
-  {
-    url: "https://www.investing.com/rss/news.rss",
-    sourceCode: "investing",
-    sourceName: "Investing.com",
-    timeoutMs: 12000,
-  },
-  {
-    url: "https://feeds.bloomberg.com/markets/news.rss",
-    sourceCode: "bloomberg",
-    sourceName: "Bloomberg",
-    timeoutMs: 12000,
-  },
+  // Uluslararası Finans Kaynakları
   {
     url: "https://www.cnbc.com/id/10000664/device/rss/rss.html",
     sourceCode: "cnbc",
     sourceName: "CNBC",
-    timeoutMs: 12000,
-  },
-  {
-    url: "https://finance.yahoo.com/news/rssindex",
-    sourceCode: "yahoo",
-    sourceName: "Yahoo Finance",
     timeoutMs: 12000,
   },
   {
