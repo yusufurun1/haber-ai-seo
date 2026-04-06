@@ -1,7 +1,7 @@
 {
   "name": "haber-ai-seo",
   "version": "1.0.0",
-  "description": "Forex haber toplama, AI özet ve SEO optimizasyonlu haber platformu",
+  "description": "Forex haber toplama ve SEO optimizasyonlu haber platformu",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.1.0",
     "isomorphic-dompurify": "^3.7.1",

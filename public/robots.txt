@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
-Disallow: /api/
+Disallow: /api/haberler
+Disallow: /api/health
+Allow: /api/haberler/kaynaklar
 
 Sitemap: https://haberai.com/sitemap.xml
+

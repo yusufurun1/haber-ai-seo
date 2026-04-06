@@ -1,13 +1,13 @@
 // ==========================================
-// Forex Haber AI - TypeScript Tip Tanımları
+// Forex Haber - TypeScript Tip Tanımları
 // ==========================================
 
 /** Haber kaynağı tipi */
 export type NewsSource =
-  | "newsapi"
   | "cointelegraph"
   | "forexlive"
-  | "investing"
+  | "financemagnates"
+  | "coindesk"
   | "demo";
 
 /** Ham haber verisi (kaynaklardan çekilen) */
@@ -23,35 +23,13 @@ export interface RawNewsItem {
   author: string | null;
 }
 
-/** İşlenmiş haber verisi (slug ve AI özeti ile) */
+/** İşlenmiş haber verisi (slug ile) */
 export interface NewsArticle extends RawNewsItem {
   slug: string;
-  expandedContent?: string;
-  aiSummary?: AISummary;
   seoMeta?: SEOMeta;
 }
 
-/** AI tarafından üretilen özet ve analiz */
-export interface AISummary {
-  /** 2-3 cümlelik kısa özet */
-  summary: string;
-  /** Haberin piyasaya etkisi analizi */
-  analysis: string;
-  /** Etkilenen döviz çiftleri */
-  affectedPairs: string[];
-  /** Piyasa etkisi: pozitif, negatif, nötr */
-  sentiment: "positive" | "negative" | "neutral";
-  /** Genişletilmiş uzun makale içeriği (HTML formatında) */
-  expandedArticle?: string;
-  /** AI tarafından üretildiği tarih */
-  generatedAt: string;
-  /** Gerçek AI tarafından mı üretildi yoksa fallback mı */
-  isAIGenerated: boolean;
-  /** AI durumu: ready=hazır, busy=yoğun, error=hata */
-  aiStatus: "ready" | "busy" | "error";
-  /** Hata veya durum mesajı */
-  statusMessage?: string;
-}
+
 
 /** SEO meta verileri */
 export interface SEOMeta {
@@ -74,8 +52,12 @@ export interface NewsArticleSchema {
   headline: string;
   description: string;
   image?: string;
+  thumbnailUrl?: string;
   datePublished: string;
   dateModified: string;
+  inLanguage?: string;
+  wordCount?: number;
+  url?: string;
   author: {
     "@type": "Organization" | "Person";
     name: string;
@@ -102,14 +84,32 @@ export interface NewsApiResponse {
   data: NewsArticle[];
   total: number;
   page: number;
+  hasMore?: boolean;
   error?: string;
 }
 
-export interface AISummaryResponse {
-  success: boolean;
-  data: AISummary;
-  error?: string;
+/** Kaynak istatistikleri */
+export interface SourceStats {
+  sourceCode: string;
+  sourceName: string;
+  count: number;
+  latestAt: string;
 }
+
+/** Health endpoint yanıtı */
+export interface HealthResponse {
+  status: "ok" | "degraded";
+  cache: {
+    size: number;
+    ageSeconds: number;
+    isRefreshing: boolean;
+  };
+  circuitBreakers: Record<string, { failures: number; disabledUntilMs: number }>;
+  scrapeStats: Record<string, { ok: number; fail: number; rate: string }>;
+  timestamp: string;
+}
+
+
 
 /** NewsAPI.org yanıt yapısı */
 export interface NewsAPIRawResponse {

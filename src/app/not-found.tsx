@@ -10,17 +10,17 @@ export default function NotFound() {
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fadeIn">
       <div className="text-7xl mb-6">📭</div>
       <h1 className="text-3xl font-black text-ui-dark mb-3 tracking-tight">
-        Haber Bulunamadı
+        Article Not Found
       </h1>
       <p className="text-text-muted mb-8 max-w-md leading-relaxed">
-        Aradığınız forex haberi bulunamadı veya kaldırılmış olabilir. Güncel
-        haberler için ana sayfayı ziyaret edin.
+        The article you're looking for doesn't exist or may have been removed.
+        Visit the homepage for the latest news.
       </p>
       <Link
         href="/"
         className="btn-primary"
       >
-        ← Ana Sayfaya Dön
+        ← Back to Home
       </Link>
     </div>
   );

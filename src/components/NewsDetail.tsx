@@ -1,17 +1,16 @@
 // ==========================================
 // Haber Detay Bileşeni
 // Tam haber içeriğini gösterir
-// AI özet ve expanded content client-side lazy load
+// Haber içeriği gösterim bileşeni
 // ==========================================
 
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { NewsArticle } from "@/lib/types";
 import { formatDateTurkish } from "@/lib/seo-utils";
 import { sanitizeHTML } from "@/lib/sanitize";
-import AISummary from "./AISummary";
 
 interface NewsDetailProps {
   article: NewsArticle;
@@ -28,53 +27,10 @@ function estimateReadingTime(html: string): number {
 
 export default function NewsDetail({ article }: NewsDetailProps) {
   const [imgError, setImgError] = useState(false);
-  const [expandedContent, setExpandedContent] = useState<string | null>(article.expandedContent || null);
-  const [expandedLoading, setExpandedLoading] = useState(!article.expandedContent);
-  const [expandedError, setExpandedError] = useState(false);
-  
+
   const readingTime = estimateReadingTime(article.content);
   const hasContent = article.content && article.content.trim().length > 50;
 
-  const [summaryData, setSummaryData] = useState<any>(null);
-
-  // Expanded content'i client-side'da lazy load et
-  const fetchAllAIData = useCallback(async () => {
-    try {
-      setExpandedLoading(true);
-      setExpandedError(false);
-      
-      const res = await fetch("/api/ai-ozet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: article.title,
-          content: article.content,
-          sourceName: article.sourceName,
-          expand: true, // Hem özet hem detaylı analiz iste
-        }),
-      });
-      
-      const data = await res.json();
-      
-      if (data.success && data.data) {
-        setSummaryData(data.data);
-        if (data.data.expandedArticle) {
-          setExpandedContent(data.data.expandedArticle);
-        }
-      } else {
-        setExpandedError(true);
-      }
-    } catch {
-      setExpandedError(true);
-    } finally {
-      setExpandedLoading(false);
-    }
-  }, [article.title, article.content, article.sourceName]);
-
-  useEffect(() => {
-    // Sayfa yüklendiğinde tüm AI verilerini tek seferde çek
-    fetchAllAIData();
-  }, [fetchAllAIData]);
 
   return (
     <article className="max-w-4xl mx-auto animate-fadeIn">
@@ -83,12 +39,12 @@ export default function NewsDetail({ article }: NewsDetailProps) {
         <ol className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-slate-400">
           <li>
             <Link href="/" className="hover:text-primary transition-colors">
-              Ana Sayfa
+              Home
             </Link>
           </li>
           <li className="text-slate-200">/</li>
           <li>
-            <span className="text-ui-dark">Forex Haber Detay</span>
+            <span className="text-ui-dark">Market News Detail</span>
           </li>
         </ol>
       </nav>
@@ -103,12 +59,12 @@ export default function NewsDetail({ article }: NewsDetailProps) {
         </time>
         {article.author && (
           <span className="text-sm text-slate-500 font-medium">
-            Yazar: <span className="text-ui-dark">{article.author}</span>
+            Author: <span className="text-ui-dark">{article.author}</span>
           </span>
         )}
         {hasContent && (
           <span className="text-sm text-slate-500 flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full font-bold">
-            ⏱ {readingTime} dk okuma
+            ⏱ {readingTime} min read
           </span>
         )}
       </div>
@@ -129,75 +85,13 @@ export default function NewsDetail({ article }: NewsDetailProps) {
         />
       </div>
 
-      {/* AI Özet & Analiz Kutusu */}
-      <div className="mb-14 relative group">
-        <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary-hover rounded-[28px] opacity-20 blur-lg group-hover:opacity-30 transition duration-500"></div>
-        <div className="relative">
-          <AISummary
-            title={article.title}
-            content={article.content}
-            sourceName={article.sourceName}
-            initialSummary={summaryData || article.aiSummary}
-            isLoading={expandedLoading}
-          />
-        </div>
-      </div>
 
-      {/* Yapay Zeka ile Genişletilmiş Haber İçeriği */}
-      {expandedContent ? (
-        <div className="mb-16">
-          <div className="bg-ui-dark rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-2xl">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] -mr-32 -mt-32"></div>
-            <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
-              <span className="text-primary italic uppercase tracking-wider">✨ AI</span> Detaylı Analiz
-            </h2>
-            <div
-              className="text-slate-300 leading-relaxed article-html-content space-y-6"
-              dangerouslySetInnerHTML={{ __html: sanitizeHTML(expandedContent) }}
-            />
-          </div>
-        </div>
-      ) : expandedLoading ? (
-        <div className="mb-16">
-          <div className="bg-slate-50 rounded-[32px] p-10 md:p-14 border-2 border-dashed border-slate-200 animate-pulse-soft flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-6">
-              <span className="text-2xl">🤖</span>
-            </div>
-            <h2 className="text-xl font-black text-ui-dark mb-4">
-              AI Derinlemesine Analiz Hazırlanıyor...
-            </h2>
-            <div className="w-full max-w-md space-y-4">
-              <div className="h-3 bg-slate-200 rounded-full w-full" />
-              <div className="h-3 bg-slate-200 rounded-full w-5/6 mx-auto" />
-              <div className="h-3 bg-slate-200 rounded-full w-4/6 mx-auto" />
-            </div>
-          </div>
-        </div>
-      ) : expandedError ? (
-        <div className="mb-16">
-          <div className="bg-red-50 rounded-[32px] p-10 md:p-14 border border-red-100 text-center">
-            <span className="text-4xl mb-6 block">⚠️</span>
-            <h2 className="text-xl font-black text-red-900 mb-4 italic uppercase tracking-wider">
-              AI Analiz Geçici Olarak Kullanılamıyor
-            </h2>
-            <p className="text-red-700/70 max-w-sm mx-auto mb-8">
-              Yapay zeka şu an yoğun olduğu için analiz yüklenemedi. Lütfen tekrar deneyin.
-            </p>
-            <button
-              onClick={() => fetchAllAIData()}
-              className="px-8 py-3 bg-red-600 text-white rounded-full font-black uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 text-xs"
-            >
-              🔄 Tekrar Dene
-            </button>
-          </div>
-        </div>
-      ) : null}
 
       {/* Orijinal Haber İçeriği */}
       <div className="mb-16">
         <div className="bg-white border border-slate-200 rounded-[32px] p-8 md:p-14 shadow-sm">
           <h2 className="text-xs font-black text-ui-dark/40 uppercase tracking-[0.3em] mb-10 flex items-center gap-4">
-            <span className="w-8 h-[1px] bg-slate-200"></span> 📰 Orijinal İçerik
+            <span className="w-8 h-[1px] bg-slate-200"></span> 📰 Original Content
           </h2>
 
           {hasContent ? (
@@ -208,7 +102,7 @@ export default function NewsDetail({ article }: NewsDetailProps) {
           ) : (
             <div className="text-center py-12">
               <p className="text-slate-400 text-lg mb-10 italic">
-                Bu haberin detaylı içeriği sadece orijinal kaynak üzerinden erişilebilirdir.
+                Full content of this article is only available on the original source.
               </p>
               <a
                 href={article.url}
@@ -216,7 +110,7 @@ export default function NewsDetail({ article }: NewsDetailProps) {
                 rel="noopener noreferrer nofollow"
                 className="btn-primary"
               >
-                🔗 Orijinal Haberi Oku
+                🔗 Read Original Article
               </a>
             </div>
           )}
@@ -229,10 +123,10 @@ export default function NewsDetail({ article }: NewsDetailProps) {
               rel="noopener noreferrer nofollow"
               className="group inline-flex items-center gap-3 text-sm font-black uppercase tracking-widest text-primary hover:text-primary-hover transition-all"
             >
-              Tam içeriği görüntüle <span className="transition-transform group-hover:translate-x-2">→</span>
+              View full article <span className="transition-transform group-hover:translate-x-2">→</span>
             </a>
             <p className="text-[10px] text-slate-400 mt-6 font-bold uppercase tracking-widest">
-              Kaynak: <span className="text-ui-dark">{article.sourceName}</span>
+              Source: <span className="text-ui-dark">{article.sourceName}</span>
             </p>
           </div>
         </div>
@@ -244,7 +138,7 @@ export default function NewsDetail({ article }: NewsDetailProps) {
           href="/"
           className="group flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 hover:text-ui-dark transition-all"
         >
-          <span className="transition-transform group-hover:-translate-x-2">←</span> Tüm Haberler
+          <span className="transition-transform group-hover:-translate-x-2">←</span> All News
         </Link>
       </div>
     </article>

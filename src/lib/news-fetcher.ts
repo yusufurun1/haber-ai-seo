@@ -1,14 +1,31 @@
 // ==========================================
 // Haber Çekme ve İşleme Servisi
-// RSS + Orijinal sayfa scraping ile tam içerik
+// - RSS kaynakları (circuit breaker ile)
+// - Paralel feed (Promise.allSettled)
+// - Map tabanlı O(1) slug lookup
 // ==========================================
 
 import Parser from "rss-parser";
 import { NewsArticle, RawNewsItem } from "./types";
+import {
+  isCacheValid,
+  getCachedList,
+  getCachedBySlug,
+  setCache,
+  updateArticleInCache,
+  isRefreshing,
+  setRefreshing,
+} from "./cache";
+import {
+  scrapeArticlePage,
+  stripAllHtmlSafe,
+  cleanArticleHtml,
+  isValidArticleImage,
+} from "./scraper";
 
 // ---- Yardımcı Fonksiyonlar ----
 
-function generateSlug(text: string): string {
+export function generateSlug(text: string): string {
   return text
     .toString()
     .normalize("NFD")
@@ -36,225 +53,224 @@ export function stripHtml(html: string): string {
 }
 
 export function stripAllHtml(html: string): string {
-  if (!html) return "";
-  return html.replace(/<[^>]*>?/gm, "").replace(/\s+/g, " ").trim();
+  return stripAllHtmlSafe(html);
 }
 
-// ---- OG:IMAGE + TAM İÇERİK SCRAPING ----
-
-interface ScrapedArticle {
-  content: string;
-  imageUrl: string | null;
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) =>
+      String.fromCharCode(parseInt(code, 10))
+    );
 }
 
-const scrapeCache = new Map<string, ScrapedArticle>();
+function parseDate(raw: string): string {
+  if (!raw) return new Date().toISOString();
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
 
-async function scrapeArticlePage(url: string): Promise<ScrapedArticle> {
-  if (!url || !url.startsWith("http")) {
-    return { content: "", imageUrl: null };
+// ---- Circuit Breaker ----
+
+interface CircuitState {
+  failures: number;
+  disabledUntil: number;
+}
+
+const CIRCUIT_THRESHOLD = 3;
+const CIRCUIT_RESET_MS = 10 * 60 * 1000;
+
+const circuitBreakers = new Map<string, CircuitState>();
+
+function isCircuitOpen(sourceCode: string): boolean {
+  const cb = circuitBreakers.get(sourceCode);
+  if (!cb) return false;
+  if (Date.now() > cb.disabledUntil) {
+    cb.failures = 0;
+    cb.disabledUntil = 0;
+    return false;
   }
+  return cb.failures >= CIRCUIT_THRESHOLD;
+}
 
-  const cached = scrapeCache.get(url);
-  if (cached) return cached;
+function recordFeedFailure(sourceCode: string): void {
+  const cb = circuitBreakers.get(sourceCode) ?? { failures: 0, disabledUntil: 0 };
+  cb.failures++;
+  if (cb.failures >= CIRCUIT_THRESHOLD) {
+    cb.disabledUntil = Date.now() + CIRCUIT_RESET_MS;
+    console.warn(`[CircuitBreaker] ${sourceCode} devre dışı (10 dk)`);
+  }
+  circuitBreakers.set(sourceCode, cb);
+}
+
+function recordFeedSuccess(sourceCode: string): void {
+  circuitBreakers.delete(sourceCode);
+}
+
+export function getCircuitBreakerStats(): Record<string, { failures: number; disabledUntilMs: number }> {
+  const result: Record<string, { failures: number; disabledUntilMs: number }> = {};
+  Array.from(circuitBreakers.entries()).forEach(([k, v]) => {
+    result[k] = { failures: v.failures, disabledUntilMs: v.disabledUntil };
+  });
+  return result;
+}
+
+// ---- RSS Feed Yapılandırması ----
+
+interface FeedConfig {
+  url: string;
+  sourceCode: string;
+  sourceName: string;
+  timeoutMs?: number;
+}
+
+const FEED_ITEM_LIMIT = parseInt(process.env.FEED_ITEM_LIMIT || "20");
+
+// ---- Hızlı og:image Önbelleği ----
+// Sadece meta tag okunur, tam sayfa indirilmez (max 15KB stream)
+const ogImageFastCache = new Map<string, string | null>();
+const OG_CACHE_TTL_MS = 60 * 60 * 1000; // 1 saat
+const ogImageCacheTime = new Map<string, number>();
+
+async function fetchOgImageFast(url: string): Promise<string | null> {
+  if (!url || !url.startsWith("http")) return null;
+
+  const now = Date.now();
+  const cached = ogImageFastCache.get(url);
+  const cachedAt = ogImageCacheTime.get(url) ?? 0;
+  if (cached !== undefined && now - cachedAt < OG_CACHE_TTL_MS) return cached;
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timer = setTimeout(() => controller.abort(), 6000);
 
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.9,tr;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
       redirect: "follow",
     });
 
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      const empty: ScrapedArticle = { content: "", imageUrl: null };
-      scrapeCache.set(url, empty);
-      return empty;
+    clearTimeout(timer);
+    if (!res.ok || !res.body) {
+      ogImageFastCache.set(url, null);
+      ogImageCacheTime.set(url, now);
+      return null;
     }
 
-    const html = await res.text();
+    // Akımlı oku — <head> bitince dur, max 15KB
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let text = "";
+    let found: string | null = null;
 
-    // 1. OG:IMAGE
-    let ogImage: string | null = null;
-    const ogPatterns = [
-      /property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
-      /content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
-      /name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i,
-      /content=["']([^"']+)["'][^>]*name=["']twitter:image(?::src)?["']/i,
-    ];
-    for (const pattern of ogPatterns) {
-      const match = html.match(pattern);
-      if (match && match[1] && match[1].startsWith("http")) {
-        ogImage = match[1];
-        break;
-      }
-    }
+    outer: while (text.length < 15000) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) text += decoder.decode(value, { stream: true });
 
-    // 2. MAKALE İÇERİĞİ
-    let articleContent = "";
+      if (text.length < 500) continue;
 
-    // article tag
-    const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-    if (articleMatch && stripAllHtml(articleMatch[1]).length > 200) {
-      articleContent = articleMatch[1];
-    }
-
-    // Yaygın content class'ları
-    if (stripAllHtml(articleContent).length < 200) {
-      const divPatterns = [
-        /<div[^>]*class="[^"]*(?:article-body|article-content|story-body|post-content|entry-content|single-content|article__body|articleBody|ct-prose)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-        /<[^>]+itemprop=["']articleBody["'][^>]*>([\s\S]*?)<\/(?:div|section)>/i,
+      const patterns = [
+        /property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
+        /content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+        /name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i,
+        /content=["']([^"']+)["'][^>]*name=["']twitter:image(?::src)?["']/i,
       ];
-      for (const pattern of divPatterns) {
-        const match = html.match(pattern);
-        if (match && match[1] && stripAllHtml(match[1]).length > 200) {
-          articleContent = match[1];
-          break;
+
+      for (const p of patterns) {
+        const m = text.match(p);
+        if (m?.[1] && m[1].startsWith("http") && isValidArticleImage(m[1])) {
+          found = m[1];
+          break outer;
         }
       }
+
+      if (text.includes("</head>") || text.includes("</HEAD>")) break;
     }
 
-    // Fallback: anlamlı <p> taglarını topla
-    if (stripAllHtml(articleContent).length < 200) {
-      const pTags = html.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || [];
-      const meaningfulP = pTags.filter((p) => {
-        const text = stripAllHtml(p);
-        return (
-          text.length > 40 &&
-          !/cookie|subscribe|newsletter|privacy|sign.?up|comment|share|follow us/i.test(
-            text
-          )
-        );
-      });
-      if (meaningfulP.length > 2) {
-        articleContent = meaningfulP.join("\n");
-      }
+    try {
+      await reader.cancel();
+    } catch {
+      // ignore
     }
 
-    // 3. Temizle
-    articleContent = cleanArticleHtml(articleContent, url);
-
-    const result: ScrapedArticle = {
-      content: articleContent,
-      imageUrl: ogImage,
-    };
-    scrapeCache.set(url, result);
-    return result;
+    ogImageFastCache.set(url, found);
+    ogImageCacheTime.set(url, now);
+    return found;
   } catch {
-    const empty: ScrapedArticle = { content: "", imageUrl: null };
-    scrapeCache.set(url, empty);
-    return empty;
+    return null;
   }
 }
 
-function isValidArticleImage(src: string): boolean {
-  if (!src || !src.startsWith("http")) return false;
-  const bl = [
-    "pixel",
-    "tracking",
-    "beacon",
-    "1x1",
-    "spacer",
-    "blank",
-    "avatar",
-    "icon",
-    "logo",
-    "badge",
-    "emoji",
-    "author",
-    "profile",
-    "headshot",
-    "staff",
-    "gravatar",
-    "spinner",
-    "analytics",
-  ];
-  return !bl.some((b) => src.toLowerCase().includes(b));
+// Önbellek boyutunu sınırla (memory leak önleme)
+function trimOgImageCache(): void {
+  if (ogImageFastCache.size > 500) {
+    const keys = Array.from(ogImageFastCache.keys()).slice(0, 100);
+    keys.forEach((k) => {
+      ogImageFastCache.delete(k);
+      ogImageCacheTime.delete(k);
+    });
+  }
 }
 
-function cleanArticleHtml(html: string, baseUrl: string): string {
-  if (!html) return "";
-  let c = html;
+// Kaynaklar için hangi kaynaklarda og:image fetch yapılacak
 
-  // Tehlikeli taglar
-  c = c.replace(
-    /<(script|style|iframe|object|embed|noscript|form|input|button|nav|footer|header|aside)[^>]*>[\s\S]*?<\/\1>/gi,
-    ""
-  );
+const OG_IMAGE_SOURCES = new Set(["forexlive", "financemagnates"]);
 
-  // Tracking pixel
-  c = c.replace(
-    /<img[^>]+(?:pixel|track|beacon|analytics|1x1|spacer|avatar|profile|headshot|staff|author|contributor|gravatar)[^>]*>/gi,
-    ""
-  );
 
-  // Written by, Reviewed by
-  c = c.replace(
-    /<(?:span|p|div)[^>]*>\s*(?:Written|Reviewed|Edited)\s+by[\s\S]*?<\/(?:span|p|div)>/gi,
-    ""
-  );
+// ---- RSS Feed Listesi (7 Kaynak) ----
 
-  // Tarih etiketleri
-  c = c.replace(/<time[^>]*>.*?<\/time>/gi, "");
+const RSS_FEEDS: FeedConfig[] = [
+  {
+    url: "https://cointelegraph.com/rss",
+    sourceCode: "cointelegraph",
+    sourceName: "Cointelegraph",
+    timeoutMs: 10000,
+  },
+  {
+    url: "https://www.forexlive.com/feed",
+    sourceCode: "forexlive",
+    sourceName: "ForexLive",
+    timeoutMs: 10000,
+  },
+  {
+    url: "https://www.financemagnates.com/feed/",
+    sourceCode: "financemagnates",
+    sourceName: "Finance Magnates",
+    timeoutMs: 12000,
+  },
+  {
+    url: "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    sourceCode: "coindesk",
+    sourceName: "CoinDesk",
+    timeoutMs: 12000,
+  },
+];
 
-  // Zararlı attribute
-  c = c.replace(/ on\w+="[^"]*"/gi, "");
-  c = c.replace(/ href="javascript:[^"]*"/gi, "");
+// ---- Tek Feed Çekme ----
 
-  // width, height, style kaldır
-  c = c.replace(/\s+(?:width|height)=["'][^"']*["']/gi, "");
-  c = c.replace(/\s+style=["'][^"']*["']/gi, "");
+async function fetchSingleFeed(feedConfig: FeedConfig): Promise<RawNewsItem[]> {
+  const { url, sourceCode, sourceName, timeoutMs = 15000 } = feedConfig;
 
-  // data-*, morss_*, class kaldır
-  c = c.replace(/\s+(?:data-\w+|morss_\w+|class)=["'][^"']*["']/gi, "");
+  if (isCircuitOpen(sourceCode)) {
+    console.log(`[Feed] ${sourceName} devre dışı (circuit), atlandı`);
+    return [];
+  }
 
-  // Lazy-load fix
-  c = c.replace(
-    /<img([^>]*?)data-(?:src|original|lazy-src)=["']([^"']+)["']/gi,
-    (_m: string, before: string, imgUrl: string) => {
-      const withoutSrc = before.replace(/src=["'][^"']*["']/i, "");
-      return "<img" + withoutSrc + ' src="' + imgUrl + '"';
-    }
-  );
-
-  // Relative URL -> absolute
-  try {
-    const origin = new URL(baseUrl).origin;
-    c = c.replace(
-      /(href|src)=["'](\/[^"']+)["']/gi,
-      '$1="' + origin + '$2"'
-    );
-  } catch {}
-
-  // loading="lazy" ekle
-  c = c.replace(/<img(?![^>]*loading=)/gi, '<img loading="lazy"');
-
-  // Boş taglar
-  c = c.replace(/<(p|span|div|strong|b|em|i)[^>]*>\s*<\/\1>/gi, "");
-  c = c.replace(/<(article|section|main)[^>]*>/gi, "");
-  c = c.replace(/<\/(article|section|main)>/gi, "");
-
-  // Ardışık br
-  c = c.replace(/(<br\s*\/?>[\s\n]*){3,}/gi, "<br/><br/>");
-
-  return c.trim();
-}
-
-// ---- RSS FEED ----
-
-export async function fetchRSSFeeds(): Promise<RawNewsItem[]> {
   const parser = new Parser({
-    timeout: 15000,
+    timeout: timeoutMs,
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; ForexHaberAI/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; ForexHaber/2.0)",
     },
     customFields: {
       item: [
@@ -264,320 +280,262 @@ export async function fetchRSSFeeds(): Promise<RawNewsItem[]> {
         ["enclosure", "enclosureObj", { keepArray: false }],
         ["description", "description", { keepArray: false }],
         ["content:encoded", "contentEncoded"],
+        ["dc:creator", "dcCreator"],
       ],
     },
   });
 
-  const feedsToFetch = [
-    {
-      url: "https://morss.it/https://cointelegraph.com/rss",
-      sourceCode: "cointelegraph",
-      sourceName: "Cointelegraph",
-    },
-    {
-      url: "https://www.forexlive.com/feed",
-      sourceCode: "forexlive",
-      sourceName: "ForexLive",
-    },
-    {
-      url: "https://www.investing.com/rss/news_301.rss",
-      sourceCode: "investing",
-      sourceName: "Investing.com",
-    },
-  ];
-
-  const allItems: RawNewsItem[] = [];
-
-  for (const feedSource of feedsToFetch) {
-    try {
-      const feed = await parser.parseURL(feedSource.url);
-      const items = (feed.items || []).slice(0, 15);
-
-      for (let i = 0; i < items.length; i += 5) {
-        const batch = items.slice(i, i + 5);
-        const processed = await Promise.allSettled(
-          batch.map(async (item) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const raw = item as any;
-            const title = String(raw.title || "Adsiz Haber");
-            const articleUrl = String(raw.link || "");
-
-            const rssContent =
-              String(raw.contentEncoded || "") ||
-              String(raw["content:encoded"] || "") ||
-              String(raw.content || "") ||
-              String(raw.description || "");
-
-            // RSS'ten gorsel
-            let rssImageUrl: string | null = null;
-            const enc = raw.enclosure;
-            const encObj = raw.enclosureObj;
-            const mc = raw.mediaContent;
-            const mt = raw.mediaThumbnail;
-
-            if (enc && enc.url) rssImageUrl = enc.url;
-            else if (encObj?.$?.url) rssImageUrl = encObj.$.url;
-            else if (mc?.$?.url) rssImageUrl = mc.$.url;
-            else if (mt?.$?.url) rssImageUrl = mt.$.url;
-
-            if (!rssImageUrl) {
-              const imgMatch = rssContent.match(
-                /<img[^>]+src=["']([^"']+)["'][^>]*>/i
-              );
-              if (
-                imgMatch &&
-                imgMatch[1] &&
-                isValidArticleImage(imgMatch[1])
-              ) {
-                rssImageUrl = imgMatch[1];
-              }
-            }
-
-            // ===== ANA FIX: Orijinal sayfadan tam içerik + görsel =====
-            let finalContent = "";
-            let finalImageUrl = rssImageUrl;
-
-            const rssTextLen = stripAllHtml(rssContent).length;
-
-            // RSS yeterli içerik verdiyse kullan
-            if (rssTextLen > 300) {
-              finalContent = cleanArticleHtml(rssContent, articleUrl);
-            }
-
-            // İçerik kısaysa -> orijinal sayfayı scrape et
-            if (stripAllHtml(finalContent).length < 200 && articleUrl) {
-              try {
-                const scraped = await scrapeArticlePage(articleUrl);
-                if (stripAllHtml(scraped.content).length > 200) {
-                  finalContent = scraped.content;
-                }
-                if (scraped.imageUrl) {
-                  finalImageUrl = scraped.imageUrl;
-                }
-              } catch {
-                // scrape başarısız, devam et
-              }
-            }
-
-            // Son çare: RSS snippet'ini paragraf yap
-            if (stripAllHtml(finalContent).length < 50) {
-              const snippet =
-                String(raw.contentSnippet || "") ||
-                stripAllHtml(
-                  String(raw.description || "") ||
-                    String(raw.content || "")
-                );
-              if (snippet.length > 20) {
-                finalContent = snippet
-                  .split(/\.\s+/)
-                  .filter((s) => s.trim().length > 10)
-                  .map((s) => "<p>" + s.trim() + ".</p>")
-                  .join("\n");
-              }
-            }
-
-            const rawDesc =
-              String(raw.contentSnippet || "") ||
-              stripAllHtml(
-                String(raw.description || "") ||
-                  String(raw.content || "")
-              );
-
-            return {
-              title,
-              description: rawDesc.substring(0, 200) + (rawDesc.length > 200 ? "..." : ""),
-              content: finalContent,
-              url: articleUrl,
-              imageUrl: finalImageUrl,
-              publishedAt:
-                String(raw.isoDate || "") ||
-                String(raw.pubDate || "") ||
-                new Date().toISOString(),
-              source: feedSource.sourceCode,
-              sourceName: feedSource.sourceName,
-              author: String(raw.creator || "") || feedSource.sourceName,
-            } as RawNewsItem;
-          })
-        );
-
-        for (const result of processed) {
-          if (result.status === "fulfilled") {
-            allItems.push(result.value);
-          }
-        }
-      }
-    } catch (error) {
-      console.error(feedSource.sourceName + " fetch error:", error);
-    }
-  }
-
-  return allItems;
-}
-
-// ---- NewsAPI.org ----
-
-export async function fetchFromNewsAPI(): Promise<RawNewsItem[]> {
-  const apiKey = process.env.NEWS_API_KEY;
-  if (!apiKey || apiKey === "your_newsapi_key_here") return [];
+  const start = Date.now();
 
   try {
-    const queries = ["forex", "currency", "EUR USD"];
+    const feed = await parser.parseURL(url);
+    const items = (feed.items || []).slice(0, FEED_ITEM_LIMIT);
     const allItems: RawNewsItem[] = [];
 
-    for (const query of queries) {
-      const url = new URL("https://newsapi.org/v2/everything");
-      url.searchParams.set("q", query);
-      url.searchParams.set("language", "en");
-      url.searchParams.set("sortBy", "publishedAt");
-      url.searchParams.set("pageSize", "8");
-      url.searchParams.set("apiKey", apiKey);
+    for (let i = 0; i < items.length; i += 5) {
+      const batch = items.slice(i, i + 5);
+      const results = await Promise.allSettled(
+        batch.map(async (item) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = item as any;
+          const title = decodeEntities(String(raw.title || "Adsiz Haber"));
+          const articleUrl = String(raw.link || "");
 
-      try {
-        const res = await fetch(url.toString(), {
-          next: { revalidate: 300 },
-        });
-        if (!res.ok) continue;
-        const data = await res.json();
+          const rssContent =
+            String(raw.contentEncoded || "") ||
+            String(raw["content:encoded"] || "") ||
+            String(raw.content || "") ||
+            String(raw.description || "");
 
-        const articles = (data.articles || [])
-          .filter(
-            (a: Record<string, unknown>) =>
-              a.title &&
-              a.title !== "[Removed]" &&
-              a.description &&
-              a.description !== "[Removed]"
-          )
-          .map((a: Record<string, unknown>): RawNewsItem => {
-            const source = a.source as { name?: string } | undefined;
-            return {
-              title: a.title as string,
-              description: stripAllHtml((a.description as string) || "").slice(
-                0,
-                200
-              ),
-              content: (a.content as string) || (a.description as string) || "",
-              url: a.url as string,
-              imageUrl: (a.urlToImage as string) || null,
-              publishedAt: a.publishedAt as string,
-              source: "newsapi",
-              sourceName: source?.name || "NewsAPI",
-              author: (a.author as string) || null,
-            };
-          });
+          let rssImageUrl: string | null = null;
+          const enc = raw.enclosure;
+          const encObj = raw.enclosureObj;
+          const mc = raw.mediaContent;
+          const mt = raw.mediaThumbnail;
 
-        allItems.push(...articles);
-      } catch {
-        continue;
+          if (enc?.url && isValidArticleImage(enc.url)) rssImageUrl = enc.url;
+          else if (encObj?.$?.url && isValidArticleImage(encObj.$.url)) rssImageUrl = encObj.$.url;
+          else if (mc?.$?.url && isValidArticleImage(mc.$.url)) rssImageUrl = mc.$.url;
+          else if (mt?.$?.url && isValidArticleImage(mt.$.url)) rssImageUrl = mt.$.url;
+
+          if (!rssImageUrl) {
+            const imgMatch = rssContent.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+            if (imgMatch?.[1] && isValidArticleImage(imgMatch[1])) {
+              rssImageUrl = imgMatch[1];
+            }
+          }
+
+          let finalContent = "";
+          if (stripAllHtmlSafe(rssContent).length > 300) {
+            finalContent = cleanArticleHtml(rssContent, articleUrl);
+          }
+
+          if (stripAllHtmlSafe(finalContent).length < 50) {
+            const snippet =
+              decodeEntities(String(raw.contentSnippet || "")) ||
+              stripAllHtmlSafe(String(raw.description || "") || String(raw.content || ""));
+            if (snippet.length > 20) {
+              finalContent = snippet
+                .split(/\.\s+/)
+                .filter((s: string) => s.trim().length > 10)
+                .map((s: string) => `<p>${s.trim()}.</p>`)
+                .join("\n");
+            }
+          }
+
+          const rawDesc =
+            decodeEntities(String(raw.contentSnippet || "")) ||
+            stripAllHtmlSafe(String(raw.description || "") || String(raw.content || ""));
+
+          const author = String(raw.dcCreator || raw.creator || "").trim() || null;
+
+          return {
+            title,
+            description: rawDesc.substring(0, 200) + (rawDesc.length > 200 ? "..." : ""),
+            content: finalContent,
+            url: articleUrl,
+            imageUrl: rssImageUrl,
+            publishedAt: parseDate(String(raw.isoDate || raw.pubDate || "")),
+            source: sourceCode,
+            sourceName,
+            author,
+          } as RawNewsItem;
+        })
+      );
+
+      for (const r of results) {
+        if (r.status === "fulfilled") allItems.push(r.value);
       }
     }
 
-    // NewsAPI haberleri için de scrape
-    for (let i = 0; i < Math.min(allItems.length, 10); i++) {
-      const item = allItems[i];
-      if (stripAllHtml(item.content).length < 200 && item.url) {
-        try {
-          const scraped = await scrapeArticlePage(item.url);
-          if (stripAllHtml(scraped.content).length > 200) {
-            allItems[i].content = scraped.content;
-          }
-          if (scraped.imageUrl && !item.imageUrl) {
-            allItems[i].imageUrl = scraped.imageUrl;
-          }
-        } catch {
-          // skip
+    console.log(`[Feed] ${sourceName}: ${allItems.length} haber (${Date.now() - start}ms)`);
+    recordFeedSuccess(sourceCode);
+
+    // ---- og:image fetch: RSS'de görsel olmayan kaynaklar için ----
+    if (OG_IMAGE_SOURCES.has(sourceCode)) {
+      trimOgImageCache();
+      const noImg = allItems.filter((item) => !item.imageUrl && item.url);
+      if (noImg.length > 0) {
+        // Max 10 item, 5'li batch'ler halinde
+        const targets = noImg.slice(0, 10);
+        console.log(`[Feed] ${sourceName}: ${targets.length} item için og:image çekiliyor...`);
+        for (let i = 0; i < targets.length; i += 5) {
+          const batch = targets.slice(i, i + 5);
+          await Promise.allSettled(
+            batch.map(async (item) => {
+              const img = await fetchOgImageFast(item.url);
+              if (img) item.imageUrl = img;
+            })
+          );
         }
+        const found = targets.filter((item) => item.imageUrl).length;
+        console.log(`[Feed] ${sourceName}: og:image — ${found}/${targets.length} bulundu`);
       }
     }
 
     return allItems;
   } catch (error) {
-    console.error("NewsAPI hatasi:", error);
+    console.error(
+      `[Feed] ${sourceName} hata (${Date.now() - start}ms):`,
+      error instanceof Error ? error.message : error
+    );
+    recordFeedFailure(sourceCode);
     return [];
   }
 }
 
-// ---- SERVER-SIDE CACHE ----
-// Aynı revalidate döngüsünde çoklu çağrıyı önler
-let newsCache: { data: NewsArticle[]; timestamp: number } | null = null;
-const NEWS_CACHE_TTL = 1000 * 60 * 2; // 2 dakika
+// ---- Tüm RSS Feed'leri Paralel Çek ----
 
-// ---- TÜM KAYNAKLARI BİRLEŞTİR ----
+export async function fetchRSSFeeds(): Promise<RawNewsItem[]> {
+  const results = await Promise.allSettled(RSS_FEEDS.map((f) => fetchSingleFeed(f)));
+  const allItems: RawNewsItem[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled") allItems.push(...r.value);
+  }
+  return allItems;
+}
+
+
+
+// ---- TÜM KAYNAKLARI BİRLEŞTİR (cache.ts ile) ----
 
 export async function fetchAllNews(): Promise<NewsArticle[]> {
-  // Cache kontrolü
-  if (newsCache && Date.now() - newsCache.timestamp < NEWS_CACHE_TTL) {
-    return newsCache.data;
+  if (isCacheValid()) return getCachedList();
+
+  if (isRefreshing()) {
+    const stale = getCachedList();
+    if (stale.length > 0) return stale;
   }
 
+  setRefreshing(true);
+
   try {
-    const [rssResult, newsApiResult] = await Promise.allSettled([
-      fetchRSSFeeds(),
-      fetchFromNewsAPI(),
-    ]);
+    const rssResult = await Promise.allSettled([fetchRSSFeeds()]);
 
     const allRaw: RawNewsItem[] = [];
-    if (rssResult.status === "fulfilled") allRaw.push(...rssResult.value);
-    if (newsApiResult.status === "fulfilled")
-      allRaw.push(...newsApiResult.value);
+    if (rssResult[0].status === "fulfilled") allRaw.push(...rssResult[0].value);
 
     if (allRaw.length === 0) {
-      console.warn("Hiçbir kaynak haber döndürmedi, demo veriler gösteriliyor");
-      const demoData = getDemoNews();
-      newsCache = { data: demoData, timestamp: Date.now() };
-      return demoData;
+      console.warn("[Haberler] Kaynak yok → demo");
+      const demo = getDemoNews();
+      setCache(demo);
+      return demo;
     }
 
     allRaw.sort(
-      (a, b) =>
-        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
     );
 
-    const seen = new Set<string>();
+    const seenSlugs = new Set<string>();
+    const seenUrls = new Set<string>();
+
     const unique = allRaw.filter((item) => {
       const slug = generateSlug(item.title);
-      if (seen.has(slug)) return false;
-      seen.add(slug);
+      const urlKey = item.url.replace(/[?#].*$/, "");
+      if (seenSlugs.has(slug) || seenUrls.has(urlKey)) return false;
+      seenSlugs.add(slug);
+      seenUrls.add(urlKey);
       return true;
     });
 
-    const result = unique.map((item) => {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+    const result: NewsArticle[] = unique.map((item) => {
       const slug = generateSlug(item.title);
       return {
         ...item,
         slug,
         seoMeta: {
-          title: item.title.substring(0, 55) + " | Haber AI",
+          title: item.title.substring(0, 55) + " | Forex Haber",
           description: item.description,
-          keywords: [item.sourceName.toLowerCase(), "haber", "forex", "finans"],
-          canonicalUrl: "https://www.haberai.com/haber/" + slug,
+          keywords: extractKeywords(item.title + " " + item.description, item.sourceName),
+          canonicalUrl: `${siteUrl}/haber/${slug}`,
           ogImage: item.imageUrl,
           ogType: "article",
           articlePublishedTime: item.publishedAt,
           articleModifiedTime: item.publishedAt,
           articleAuthor: item.author || item.sourceName,
-          articleSection: "Ekonomi",
+          articleSection: detectCategory(item.title),
         },
-      } as NewsArticle;
+      };
     });
 
-    // Cache'e kaydet
-    newsCache = { data: result, timestamp: Date.now() };
+    console.log(`[Haberler] ${result.length} haber cache (${allRaw.length - result.length} duplicate silindi)`);
+    setCache(result);
     return result;
   } catch (error) {
-    console.error("fetchAllNews hatasi:", error);
-    const demoData = getDemoNews();
-    newsCache = { data: demoData, timestamp: Date.now() };
-    return demoData;
+    console.error("[fetchAllNews]:", error);
+    const demo = getDemoNews();
+    setCache(demo);
+    return demo;
+  } finally {
+    setRefreshing(false);
   }
 }
 
-export async function fetchNewsBySlug(
-  slug: string
-): Promise<NewsArticle | null> {
-  const allNews = await fetchAllNews();
-  return allNews.find((article) => article.slug === slug) || null;
+export async function fetchNewsBySlug(slug: string): Promise<NewsArticle | null> {
+  await fetchAllNews();
+
+  const article = getCachedBySlug(slug);
+  if (!article) return null;
+
+  if (stripAllHtmlSafe(article.content).length < 200 && article.url) {
+    try {
+      const scraped = await scrapeArticlePage(article.url);
+      if (stripAllHtmlSafe(scraped.content).length > 200) {
+        article.content = scraped.content;
+      }
+      if (scraped.imageUrl && !article.imageUrl) {
+        article.imageUrl = scraped.imageUrl;
+      }
+      updateArticleInCache(slug, article);
+    } catch {
+      // mevcut içerikle devam
+    }
+  }
+
+  return article;
 }
 
+// ---- Yardımcılar ----
+
+function detectCategory(title: string): string {
+  if (/fed|fomc|powell|federal reserve/i.test(title)) return "Fed";
+  if (/ecb|lagarde|euro/i.test(title)) return "ECB";
+  if (/boj|bank of japan|yen/i.test(title)) return "BOJ";
+  if (/tcmb|merkez bankası|türkiye/i.test(title)) return "TCMB";
+  if (/bitcoin|crypto|btc|ethereum/i.test(title)) return "Kripto";
+  if (/gold|altın|xau/i.test(title)) return "Emtia";
+  if (/technical|teknik|rsi|macd/i.test(title)) return "Teknik Analiz";
+  return "Ekonomi";
+}
+
+function extractKeywords(text: string, sourceName: string): string[] {
+  const base = [sourceName.toLowerCase(), "forex", "haber", "döviz", "finans"];
+  const currencies = ["eur/usd", "gbp/usd", "usd/try", "usd/jpy", "xau"];
+  const found = currencies.filter((c) => text.toLowerCase().includes(c));
+  return Array.from(new Set([...base, ...found]));
+}
 // ---- DEMO VERİLER ----
 
 function getDemoNews(): NewsArticle[] {
@@ -651,7 +609,7 @@ function getDemoNews(): NewsArticle[] {
       now.getTime() - d.hoursAgo * 60 * 60 * 1000
     ).toISOString(),
     source: "demo",
-    sourceName: "Forex Haber AI",
+    sourceName: "Forex Haber",
     author: "Forex Analist",
     slug: generateSlug(d.title),
   }));

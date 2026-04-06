@@ -5,13 +5,14 @@
 
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { fetchAllNews, fetchNewsBySlug } from "@/lib/news-fetcher";
+import { fetchNewsBySlug, fetchAllNews } from "@/lib/news-fetcher";
 import {
   generateSEOMeta,
   generateArticleSchema,
   generateBreadcrumbSchema,
 } from "@/lib/seo-utils";
 import NewsDetail from "@/components/NewsDetail";
+import NewsCard from "@/components/NewsCard";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -78,14 +79,25 @@ export default async function HaberDetayPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const article = await fetchNewsBySlug(slug);
+  const [article, allNews] = await Promise.all([
+    fetchNewsBySlug(slug),
+    fetchAllNews(),
+  ]);
 
   if (!article) {
     notFound();
   }
 
-  // NOT: AI özet ve expanded content artık client-side'da yükleniyor
-  // Bu sayede build sırasında rate limit hatası oluşmuyor
+  // İlgili haberler: aynı kaynak VEYA aynı kategori, max 3 adet
+  const articleSection = article.seoMeta?.articleSection || "";
+  const related = allNews
+    .filter(
+      (a) =>
+        a.slug !== slug &&
+        (a.source === article.source ||
+          a.seoMeta?.articleSection === articleSection)
+    )
+    .slice(0, 3);
 
   // Schema.org yapısal verileri
   const articleSchema = generateArticleSchema(article);
@@ -115,6 +127,20 @@ export default async function HaberDetayPage({
       <div className="animate-fadeIn">
         <NewsDetail article={article} />
       </div>
+
+      {/* İlgili Haberler */}
+      {related.length > 0 && (
+        <section className="mt-16 mb-8">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-8 flex items-center gap-4">
+            <span className="w-8 h-[1px] bg-slate-200"></span> Related Articles
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {related.map((a) => (
+              <NewsCard key={a.slug} article={a} />
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }
