@@ -490,7 +490,8 @@ async function fetchSingleFeed(feedConfig: FeedConfig): Promise<RawNewsItem[]> {
 
           const rawDesc =
             decodeEntities(String(raw.contentSnippet || "")) ||
-            stripAllHtmlSafe(String(raw.description || "") || String(raw.content || ""));
+            stripAllHtmlSafe(String(raw.description || "") || String(raw.content || "")) ||
+            title; // Fallback to title if no description (Investing.com, Yahoo Finance etc.)
 
           const author = String(raw.dcCreator || raw.creator || "").trim() || null;
 
@@ -607,7 +608,9 @@ export async function fetchAllNews(): Promise<NewsArticle[]> {
       if (item.title.length < MIN_TITLE_LENGTH) {
         return false;
       }
-      if (item.description.length < MIN_DESC_LENGTH && !item.content) {
+      // Görsel varsa description kısa olabilir (Investing.com, Yahoo Finance)
+      const hasImage = !!item.imageUrl;
+      if (item.description.length < MIN_DESC_LENGTH && !item.content && !hasImage) {
         return false;
       }
       
