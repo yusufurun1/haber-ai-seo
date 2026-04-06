@@ -250,7 +250,62 @@ export function cleanArticleHtml(html: string, baseUrl: string): string {
   // Ardışık br
   c = c.replace(/(<br\s*\/?>[\s\n]*){3,}/gi, "<br/><br/>");
 
+  // Site navigasyon/menü metinlerini temizle (CNBC vb.)
+  c = cleanNavigationText(c);
+
   return c.trim();
+}
+
+/** Navigasyon ve menü metinlerini temizler */
+function cleanNavigationText(text: string): string {
+  // CNBC ve benzeri sitelerin navigasyon metinleri
+  const navPatterns = [
+    /📰\s*Original\s*Content/gi,
+    /\bLivestream\b/gi,
+    /\bMake\s*It\b/gi,
+    /\bselect\b/gi,
+    /\bUSA\b/gi,
+    /\bINTL\b/gi,
+    /\bWatchlist\b/gi,
+    /\bSIGN\s*IN\b/gi,
+    /\bCreate\s*free\s*account\b/gi,
+    /\bMarkets\b/gi,
+    /\bBusiness\b/gi,
+    /\bInvesting\b(?!\s+in)/gi, // "Investing in" hariç
+    /\bTech\b/gi,
+    /\bPolitics\b/gi,
+    /\bVideo\b/gi,
+    /\bInvesting\s*Club\b/gi,
+    /\bJoin\s*IC\b/gi,
+    /\bPRO\b/gi,
+    /\bJoin\s*Pro\b/gi,
+    /\bNews\s*Alerts\b/gi,
+    /\bSubscribe\b/gi,
+    /\bSign\s*up\b/gi,
+    /\bLog\s*in\b/gi,
+    /\bFollow\s*us\b/gi,
+    /\bShare\s*this\b/gi,
+    /\bCookie\s*Policy\b/gi,
+    /\bPrivacy\s*Policy\b/gi,
+    /\bTerms\s*of\s*Service\b/gi,
+    /\bAdvertise\b/gi,
+    /\bContact\b/gi,
+    /\bAbout\s*Us\b/gi,
+    /\bCareers\b/gi,
+    /\bHelp\b/gi,
+    /\bFAQ\b/gi,
+  ];
+  
+  let cleaned = text;
+  for (const pattern of navPatterns) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  
+  // Ardışık boşlukları ve satır sonlarını temizle
+  cleaned = cleaned.replace(/\s{3,}/g, " ");
+  cleaned = cleaned.replace(/(\n\s*){3,}/g, "\n\n");
+  
+  return cleaned;
 }
 
 // ---- Fetch With Retry ----
