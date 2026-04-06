@@ -235,7 +235,7 @@ interface FeedConfig {
   timeoutMs?: number;
 }
 
-const FEED_ITEM_LIMIT = parseInt(process.env.FEED_ITEM_LIMIT || "20");
+const FEED_ITEM_LIMIT = parseInt(process.env.FEED_ITEM_LIMIT || "40");
 
 // ---- Hızlı og:image Önbelleği ----
 // Sadece meta tag okunur, tam sayfa indirilmez (max 15KB stream)
@@ -331,7 +331,7 @@ function trimOgImageCache(): void {
 
 // Kaynaklar için hangi kaynaklarda og:image fetch yapılacak
 
-const OG_IMAGE_SOURCES = new Set(["forexlive", "financemagnates", "investing", "bloomberg", "cnbc"]);
+const OG_IMAGE_SOURCES = new Set(["forexlive", "financemagnates", "investing", "bloomberg", "cnbc", "yahoo", "guardian", "actionforex"]);
 
 
 // ---- RSS Feed Listesi (10 Kaliteli Kaynak) ----
@@ -348,6 +348,12 @@ const RSS_FEEDS: FeedConfig[] = [
     url: "https://www.financemagnates.com/feed/",
     sourceCode: "financemagnates",
     sourceName: "Finance Magnates",
+    timeoutMs: 12000,
+  },
+  {
+    url: "https://www.actionforex.com/feed/",
+    sourceCode: "actionforex",
+    sourceName: "ActionForex",
     timeoutMs: 12000,
   },
   // Kripto Kaynakları
@@ -592,7 +598,20 @@ export async function fetchAllNews(): Promise<NewsArticle[]> {
     const seenSlugs = new Set<string>();
     const seenUrls = new Set<string>();
 
+    // Kalite filtresi: en az 15 karakter başlık ve 20 karakter açıklama
+    const MIN_TITLE_LENGTH = 15;
+    const MIN_DESC_LENGTH = 20;
+
     const unique = allRaw.filter((item) => {
+      // Kalite kontrolü
+      if (item.title.length < MIN_TITLE_LENGTH) {
+        return false;
+      }
+      if (item.description.length < MIN_DESC_LENGTH && !item.content) {
+        return false;
+      }
+      
+      // Duplicate kontrolü
       const slug = generateSlug(item.title);
       const urlKey = item.url.replace(/[?#].*$/, "");
       if (seenSlugs.has(slug) || seenUrls.has(urlKey)) return false;

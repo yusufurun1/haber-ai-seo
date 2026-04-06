@@ -32,7 +32,7 @@ export type NewsSource =
   | "cnbc"
   | "yahoo"
   | "guardian"
-  | "ft"
+  | "actionforex"
   | "demo";
 
 /** Ham haber verisi (kaynaklardan çekilen) */

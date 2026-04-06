@@ -7,6 +7,7 @@ const SOURCES = [
   { code: "", label: "All Sources" },
   { code: "forexlive", label: "ForexLive" },
   { code: "financemagnates", label: "Finance Magnates" },
+  { code: "actionforex", label: "ActionForex" },
   { code: "cointelegraph", label: "Cointelegraph" },
   { code: "coindesk", label: "CoinDesk" },
   { code: "investing", label: "Investing.com" },
